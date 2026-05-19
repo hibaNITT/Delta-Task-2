@@ -1,0 +1,108 @@
+// Linking code to the HTML element
+const canvas = document.getElementById("gameCanvas");
+
+//This creates our drawing context (ctx) object.
+// This is what we will use to draw on the canvas board..2d
+const ctx = canvas.getContext("2d");
+
+//Global Tracking Coordinates - center
+var player_position_x = 400;
+var player_position_y = 300;
+
+//global State Object
+// instead of having many arrays , we store the arrays in a dictionary
+const single_global_state_object = {
+  enemies: [],
+  bullets: [],
+};
+
+// Input State Dictionary
+var keysPressed = {
+  w: false,
+  a: false,
+  s: false,
+  d: false,
+};
+
+// This is our first required custom vector helper function
+//This simple helper takes two numbers and wraps them into a clean, easy vector coordinate package.
+function darkSpaceVector_create(x, y) {
+  return { x: x, y: y };
+}
+
+// GAME LOOP -  runs 60 times per sec
+function mainGameLoop() {
+  // Because these are separate if conditions rather than linked if/else statements,
+  //if you hold down W and D at the exact same time, the engine will process both blocks and move you diagonally
+
+  //detecting keyboard clicks
+  var speed = 5;
+  var radius = 15;
+
+  if (keysPressed.w === true) {
+    if (player_position_y - radius - speed >= 0) {
+      player_position_y = player_position_y - speed;
+    }
+  }
+  if (keysPressed.s === true) {
+    if (player_position_y + radius + speed <= canvas.height) {
+      player_position_y = player_position_y + speed;
+    }
+    player_position_y = player_position_y + speed; // Move DOWN
+  }
+  if (keysPressed.a === true) {
+    if (player_position_x - radius - speed >= 0) {
+      player_position_x = player_position_x - speed;
+    }
+  }
+  if (keysPressed.d === true) {
+    if (player_position_x + radius + speed <= canvas.width) {
+      player_position_x = player_position_x + speed;
+    }
+  }
+
+  // Wiping the rectangle canvas completely clean
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  //  player drawing styles
+  ctx.fillStyle = "#ffff33";
+  ctx.strokeStyle = "#000000"; // Black boundary outline
+  ctx.lineWidth = 3;
+
+  // Drawing the player shape .. A full circle or arc
+
+  // Tells the canvas rendering engine to start tracking a brand new line sequence or geometric shape path.
+  ctx.beginPath();
+
+  //general syntax to draw this - .arc(x,y,radius,start,end)....here 360
+  ctx.arc(player_position_x, player_position_y, 15, 0, Math.PI * 2);
+
+  ctx.fill();
+  ctx.stroke();
+
+  //It tells the browser window to call main_game_loop again right before the monitor refreshes next.
+  //This creates an elegant, highly optimized, non-stop recursive animation loop.
+  requestAnimationFrame(mainGameLoop);
+}
+
+//window is a built-in, ultimate master object created automatically.
+//It represents the entire tab window that your webpage is running inside.
+
+// Event Listener for When a key is pressed
+window.addEventListener("keydown", function (event) {
+  var keyName = event.key.toLowerCase(); //to avoid capslock
+  if (keyName in keysPressed) {
+    keysPressed[keyName] = true;
+  }
+});
+
+//  Event Listener for When a key is released
+window.addEventListener("keyup", function (event) {
+  var keyName = event.key.toLowerCase();
+  if (keyName in keysPressed) {
+    keysPressed[keyName] = false;
+  }
+});
+
+// Manually start the loop for the very first time
+mainGameLoop();
