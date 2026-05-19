@@ -1,0 +1,30 @@
+Step 1: Setting up the HTML Canvas Blueprint
+
+Step 2: Connecting Javascript and Initializing Data Containers
+  - create our required global state containers, and build our first vector math function.
+  -Before we can instruct the browser to render shapes dynamically 60 times a second, our code needs reference points.
+   We need to fetch the canvas element so the script knows where to draw, set up data boxes to hold our coordinates, 
+   and build mathematical functions to help compute directional movement later on.
+
+Step 3: Creating the The Game Loop and Rendering the Player.
+   - we will write commands to continuously clear old screen drawings and redraw our player character at their tracked coordinate positions
+   - video games cannot just draw a picture once and sit still. Games work exactly like a traditional flip-book animation: they update positions
+    and redraw everything on the screen roughly 60 times a second.
+
+Step 4: Tracking Keyboard Inputs
+- W (up), A (left), S (down), and D (right).
+- we also have to keep track of whether each key is currently being held down
+-  we can check if a key is held down during every single cycle of mainGameLoop
+
+(In standard programming, when you hold down a keyboard key, there is a small built-in delay before your operating system starts 
+repeating the key (like when you hold down a letter while typing a text message). If we used that default behavior,
+ our player avatar would move a tiny bit, freeze for a split second, and then start stuttering across the screen!)
+
+Step 5: Activating Real-Time Player Movement
+- If the loop checks and finds that a keyPressed is currently true, it will add or subtract a tiny amount from the player's tracking position variables .
+-mainGameLoop runs 60 times a second, checking our movement switches inside the loop means that the game instantly calculates new coordinates and re-renders the circle at its brand new location on every single frame.
+
+Step 6: Enforcing Arena Boundaries
+-We are going to add a safety check inside our mainGameLoop function.
+ Before updating the player's position, we will check if the new position would push the circle past the edges of our canvas boundaries.
+ If it does, we will block it right at the border.
