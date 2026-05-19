@@ -59,3 +59,14 @@ Draw it: Render it onto our grid as a bright glowing red plasma bolt.
 Step 11: Memory for Discharged Bullets
 -Right now, when you fire a bullet, it flies off the edge of your screen and disappears visually—but it never stops existing in your computer's memory
 -Instead of starting from 0 and going up, we will loop backwards from the end of the array down to 0.
+
+Step 12: Building the  Room Map Layout
+-We will create a fixed array list named sectorRooms. 
+-Each room object in this list will store its specific top-left canvas corner coordinates (x, y), its total pixel bounding scale (width, height), and a name identifier tag.
+-let us have 20 rooms
+
+It tells our graphics loop exactly where to paint your room floors and solid wall borders on the screen.
+It allows us to later check if your player is standing inside a room or if an enemy bot should spawn right inside that specific zone.
+
+Step 13: Painting the 20 room Grid
+-Now we will update your rendering engine loop inside mainGameLoop to find and draw these 20 specific chambers smoothly on your screen.

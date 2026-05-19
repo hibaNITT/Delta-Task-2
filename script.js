@@ -5,9 +5,41 @@ const canvas = document.getElementById("gameCanvas");
 // This is what we will use to draw on the canvas board..2d
 const ctx = canvas.getContext("2d");
 
-//Global Tracking Coordinates - center
-var player_position_x = 400;
-var player_position_y = 300;
+var player_position_x = 90; //  the player is inside Sector 1
+var player_position_y = 85;
+
+//CREATING ROOMS DYNAMICALLY
+
+// Instantiating our 20-Room Map
+var sectorRooms = [];
+
+var gridColumns = 5;
+var gridRows = 4;
+var roomWidth = 136;
+var roomHeight = 125;
+var wallPadding = 20;
+
+// Construct the 20 rooms dynamically
+for (var row = 0; row < gridRows; row++) {
+  for (var col = 0; col < gridColumns; col++) {
+    // Calculate the exact pixel coordinates on the canvas for this room
+    var roomX = wallPadding + col * (roomWidth + wallPadding);
+    var roomY = wallPadding + row * (roomHeight + wallPadding);
+    var sectorNumber = row * gridColumns + col + 1;
+
+    // Create the individual room entity blueprint
+    var roomZone = {
+      x: roomX,
+      y: roomY,
+      width: roomWidth,
+      height: roomHeight,
+      name: "Sector " + sectorNumber,
+    };
+
+    // Push it into our master map registry array
+    sectorRooms.push(roomZone);
+  }
+}
 
 //global State Object
 // instead of having many arrays , we store the arrays in a dictionary
@@ -67,6 +99,25 @@ function mainGameLoop() {
 
   // Wiping the rectangle canvas completely clean
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  //rendering the 20 room facility
+  for (var r = 0; r < sectorRooms.length; r++) {
+    var room = sectorRooms[r];
+
+    // Paint the interior floors
+    ctx.fillStyle = "rgba(12, 24, 18, 0.85)";
+    ctx.fillRect(room.x, room.y, room.width, room.height);
+
+    // Draw the solid outer perimeter walls
+    ctx.strokeStyle = "#00d2ff";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(room.x, room.y, room.width, room.height);
+
+    // Render the localized sector designation string in the corner
+    ctx.fillStyle = "#00d2ff";
+    ctx.font = "9px monospace";
+    ctx.fillText(room.name, room.x + 6, room.y + 14);
+  }
 
   //  player drawing styles
   ctx.fillStyle = "#ffff33";
