@@ -28,3 +28,34 @@ Step 6: Enforcing Arena Boundaries
 -We are going to add a safety check inside our mainGameLoop function.
  Before updating the player's position, we will check if the new position would push the circle past the edges of our canvas boundaries.
  If it does, we will block it right at the border.
+
+Step 7: Tracking Mouse Interactivity for shooting
+-Whenever your mouse glides inside our grid, these numbers will automatically adjust to show where your computer pointer is aimed.
+-we must figure out the exact point where the player is looking.
+Once we know where your mouse pointer is sitting, we can use trigonometry inside our next step to rotate your player's gun barrel directly toward that point!
+
+Step 8: Calculating Aim Angles and Rendering the gun...attactching to player and turning according to mouse
+-our coordinate engine knows exactly where your mouse cursor is hovering, we can link it to our graphics layer.
+-We will use some basic geometry to calculate the mathematical angle between the center of your player circle and your mouse coordinates.
+-we will draw a clean line extending from the center of the player outward, representing a tactical weapon turret barrel pointing directly at your mouse cursor.
+-we must recalculate this direction vector dynamically on every single frame inside mainGameLoop.
+
+Step 9: Shooting Projectiles from the Weapon Tip
+-To manage multiple projectiles flying around the screen at the same time, we need a flexible data framework. Instead of creating individual variables 
+for every single bullet, we treat our single_global_state_object.bullets array like a dynamic array.
+-when we click a new dictionary wil, be added
+-This package will log three critical parameters: the bullet's current position (starting right at the tip of our gun), and the directional velocities vx and vy
+required to make it fly straight along the angle your gun was pointing at the exact instant you clicked.
+
+Step 10: Animating and Rendering Active gun shots
+-We will write a simple loop structure that scans through your single_global_state_object.bullets array item by item. 
+For every single bullet found in that array, our code will do two things:
+
+Update its position: Add its custom directional speed variables (vx and vy) straight to its coordinates (x and y).
+
+Draw it: Render it onto our grid as a bright glowing red plasma bolt.
+-Since your game loop ticks roughly 60 times a second, updating each projectile's position array entry incrementally produces smooth, independent movement paths.
+
+Step 11: Memory for Discharged Bullets
+-Right now, when you fire a bullet, it flies off the edge of your screen and disappears visually—but it never stops existing in your computer's memory
+-Instead of starting from 0 and going up, we will loop backwards from the end of the array down to 0.
