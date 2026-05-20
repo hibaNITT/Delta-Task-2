@@ -70,3 +70,52 @@ It allows us to later check if your player is standing inside a room or if an en
 
 Step 13: Painting the 20 room Grid
 -Now we will update your rendering engine loop inside mainGameLoop to find and draw these 20 specific chambers smoothly on your screen.
+
+
+SAT - Think of SAT like holding up a flashlight in a dark room. If you shine a light on two objects, they cast shadows onto the wall behind them.
+If their shadows overlap from EVERY single angle, it means the objects are physically crashing into each other.
+If there is even ONE angle where the shadows do not touch, it means there is a gap of empty space between them, and NO collision has occurred.
+
+
+Without this exact vector math, if a player runs fast enough toward a wall, they will clip inside it and get permanently trapped. 
+SAT gives us the exact mathematical data needed to smoothly push the player back outside the wall on every single frame.
+
+By making our moving player a circle, we give our engine a mathematical superpower: Invariance to Rotation.
+
+A circle looks identical from every single angle.
+Whether your player rotates left, spins right, or moves diagonally, the distance from the center to the outer edge is always exactly the same: the radius.
+
+
+
+
+Step 14: Laying the Geometry Foundation for Separating Axis Theorem (SAT).
+-The Separating Axis Theorem (SAT) cannot understand simple rectangular data strings like (x, y, width, height). Instead, it treats every object in your game like a solid polygon geometric shape.
+ To use SAT, our code must know the explicit positions of the Vertices (the exact x and y coordinates of all 4 corners) for every single room.
+
+-The Separating Axis Theorem works by projecting the shadows of your game objects onto different angular lines (axes) to check if those shadows overlap. If there is a gap between the shadows, it means no collision is happening!
+
+-To calculate those projection shadow lines accurately, the math formulas must know where the corner vertices sit. By pre-calculating these four points for each room during setup, 
+we keep the game engine optimized and ready to handle fast collision lookups 60 times per second.
+
+Step 15: Creating the Vector Helper Functions
+
+darkSpaceVector_line: Finds a line segment running between two geometric coordinate points.
+darkSpaceVector_perpendicular: Rotates a vector line by 90 degrees to find its perpendicular normal axis.
+darkSpaceVector_normalize: Shrinks a directional line down so its total length equals exactly 1 unit, keeping our projection calculations balanced.
+
+Step 16: Building the Vector Projection Formula for SAT.
+
+Step 17: Flattening a Circle Shape onto a 1D Axis Shadow.
+-We are going to write a brand-new function called darkSpaceProject_circle. This function calculates where a circle's flat shadow line begins and ends when projected onto an axis.
+-Use our darkSpaceVector_formula to project the absolute center point of the circle onto the line.
+
+Extend that center position backward and forward by the circle's radius distance.
+
+Step 18: Flattening a Wall Box onto a 1D Axis
+
+Unlike our smooth player circle, a wall box's shadow changes size depending on the angle we look at it from. If it is turned slightly, its corners stick out differently!
+
+To safely calculate its 1D shadow span, we have to:
+Grab all 4 absolute corner points of the wall.
+Flatten each point into a single coordinate position on our axis line using darkSpaceVector_formula.
+Track which corner landed the furthest to the left (our absolute min) and which corner landed the furthest to the right - our absolute max

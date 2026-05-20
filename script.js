@@ -36,6 +36,17 @@ for (var row = 0; row < gridRows; row++) {
       name: "Sector " + sectorNumber,
     };
 
+    //SAT
+    // Clockwise ordering of corners: Top-Left, Top-Right, Bottom-Right, Bottom-Left
+    vertices: [
+      { x: roomX, y: roomY }, // Corner 1
+      { x: roomX + roomWidth, y: roomY }, // Corner 2
+      { x: roomX + roomWidth, y: roomY + roomHeight }, // Corner 3
+      { x: roomX, y: roomY + roomHeight }, // Corner 4
+    ];
+
+    //so to access this we can do sectorRooms[0].vertices[2]
+
     // Push it into our master map registry array
     sectorRooms.push(roomZone);
   }
@@ -45,7 +56,8 @@ for (var row = 0; row < gridRows; row++) {
 // instead of having many arrays , we store the arrays in a dictionary
 const single_global_state_object = {
   enemies: [],
-  bullets: [],
+  bulletHead: null, // FIRST bullet node in our chain
+  bulletTail: null, // LAST bullet node in our chain
 };
 
 // Input State Dictionary
@@ -59,12 +71,6 @@ var keysPressed = {
 //your weapon system default-aims neatly forward.
 var mouseX = 400;
 var mouseY = 300;
-
-// This is our first required custom vector helper function
-//This simple helper takes two numbers and wraps them into a clean, easy vector coordinate package.
-function darkSpaceVector_create(x, y) {
-  return { x: x, y: y };
-}
 
 // GAME LOOP -  runs 60 times per sec
 function mainGameLoop() {
@@ -159,43 +165,166 @@ function mainGameLoop() {
   ctx.fill();
   ctx.stroke();
 
-  // SCAN, UPDATE, AND RENDER ACTIVE PROJECTILES
-  for (var i = 0; i < single_global_state_object.bullets.length; i++) {
-    // Fetch the specific bullet out of our state container
-    var bullet = single_global_state_object.bullets[i];
+  var currentBullet = single_global_state_object.bulletHead;
 
-    // Advance the bullet coordinates by its trajectory velocity factors
-    bullet.x = bullet.x + bullet.vx;
-    bullet.y = bullet.y + bullet.vy;
+  while (currentBullet !== null) {
+    var nextBulletNode = currentBullet.next;
 
-    // Memory Cleanup Check
+    // Update positions
+    currentBullet.x += currentBullet.vx;
+    currentBullet.y += currentBullet.vy;
+
+    // Offscreen Cleanup
     if (
-      bullet.x < -10 ||
-      bullet.x > canvas.width + 10 ||
-      bullet.y < -10 ||
-      bullet.y > canvas.height + 10
+      currentBullet.x < -10 ||
+      currentBullet.x > canvas.width + 10 ||
+      currentBullet.y < -10 ||
+      currentBullet.y > canvas.height + 10
     ) {
-      // Delete exactly 1 item at our current index position (i)
-      single_global_state_object.bullets.splice(i, 1); //This is JavaScript's built-in array eraser command.
+      if (currentBullet.prev !== null) {
+        currentBullet.prev.next = currentBullet.next;
+      } else {
+        single_global_state_object.bulletHead = currentBullet.next;
+      }
 
-      continue; // Skip the drawing lines below and move to the next bullet!
+      if (currentBullet.next !== null) {
+        currentBullet.next.prev = currentBullet.prev;
+      } else {
+        single_global_state_object.bulletTail = currentBullet.prev;
+      }
+
+      currentBullet = nextBulletNode;
+      continue;
     }
 
-    // Set the graphics styling
+    // Drawing bullet
     ctx.fillStyle = "#ff3333";
     ctx.strokeStyle = "#ffffff";
     ctx.lineWidth = 1;
-
-    // 3. Draw the projectile shape ...A small 4-pixel radius circle
     ctx.beginPath();
-    ctx.arc(bullet.x, bullet.y, 4, 0, Math.PI * 2);
+    ctx.arc(currentBullet.x, currentBullet.y, 4, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
+
+    currentBullet = nextBulletNode;
   }
 
   //It tells the browser window to call main_game_loop again right before the monitor refreshes next.
   //This creates an elegant, highly optimized, non-stop recursive animation loop.
   requestAnimationFrame(mainGameLoop);
+}
+
+function appendBulletNode(bulletData) {
+  // linked list node package
+  var newNode = {
+    x: bulletData.x,
+    y: bulletData.y,
+    vx: bulletData.vx,
+    vy: bulletData.vy,
+    next: null,
+    prev: null,
+  };
+
+  //  If our chain is completely empty, this new node becomes both the Head and Tail
+  if (single_global_state_object.bulletHead === null) {
+    single_global_state_object.bulletHead = newNode;
+    single_global_state_object.bulletTail = newNode;
+  } else {
+    // Otherwise, attatching the current tail node to our incoming node's back
+    newNode.prev = single_global_state_object.bulletTail;
+
+    //attatching the old tail's forward  to point to our incoming node
+    single_global_state_object.bulletTail.next = newNode;
+
+    // incrementing our main pointer
+    single_global_state_object.bulletTail = newNode;
+  }
+}
+
+// SAT helper functions
+
+// This is our first required custom vector helper function
+//This simple helper takes two numbers and wraps them into a clean, easy vector coordinate package.
+function darkSpaceVector_create(x, y) {
+  return { x: x, y: y };
+}
+
+// Calculate a vector line running from pointB to pointA
+function darkSpaceVector_line(vectorA, vectorB) {
+  return {
+    x: vectorA.x - vectorB.x,
+    y: vectorA.y - vectorB.y,
+  };
+}
+
+// Rotate a vector line by 90 degrees to find the perpendicular angle of a wall
+function darkSpaceVector_perpendicular(vector) {
+  return {
+    x: -vector.y,
+    y: vector.x,
+  };
+}
+
+// Shrinking a directional vector down to a length of 1 unit...normalize
+function darkSpaceVector_normalize(vector) {
+  var length = Math.sqrt(vector.x * vector.x + vector.y * vector.y);
+
+  // Safety check: Avoid dividing by zero if the line has no length
+  if (length === 0) {
+    return { x: 0, y: 0 };
+  }
+
+  return {
+    x: vector.x / length,
+    y: vector.y / length,
+  };
+}
+
+//Project a single coordinate point onto a tracking normal axis (Dot Product Formula)
+function darkSpaceVector_formula(point, axis) {
+  return point.x * axis.x + point.y * axis.y;
+}
+
+// Flatten a full circle entity into a 1D min/max shadow line along a given axis
+function darkSpaceProject_circle(circle, axis) {
+  // Finding where the absolute center point lands on the axis line
+  var centerProjected = darkSpaceVector_formula(circle, axis);
+
+  // Stretching out the shadow span in both directions by the circle's radius length
+  return {
+    min: centerProjected - circle.radius,
+    max: centerProjected + circle.radius,
+  };
+}
+
+// Flatten a 4-cornered wall e into a 1D shadow line
+function darkSpaceProject_box(box, axis) {
+  // Collect all 4 corner coordinates of the rectangular obstacle
+  var corners = [
+    { x: box.x, y: box.y },
+    { x: box.x + box.width, y: box.y },
+    { x: box.x + box.width, y: box.y + box.height },
+    { x: box.x, y: box.y + box.height },
+  ];
+
+  // Project the very first corner to set an initial baseline
+  var initialProjected = darkSpaceVector_formula(corners[0], axis);
+  var min = initialProjected;
+  var max = initialProjected;
+
+  // Looping through the remaining 3 corners to find the absolute extreme boundaries
+  for (var i = 1; i < corners.length; i++) {
+    var currentProjected = darkSpaceVector_formula(corners[i], axis);
+
+    if (currentProjected < min) {
+      min = currentProjected;
+    }
+    if (currentProjected > max) {
+      max = currentProjected;
+    }
+  }
+
+  return { min: min, max: max };
 }
 
 //window is a built-in, ultimate master object created automatically.
@@ -256,8 +385,8 @@ window.addEventListener("mousedown", function (event) {
       vy: velocityY,
     };
 
-    // Inject the bullet package directly into our state object storage array
-    single_global_state_object.bullets.push(newBullet);
+    // Inject the bullet package directly into our linked list
+    appendBulletNode(newBullet);
   }
 });
 
