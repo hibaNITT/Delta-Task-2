@@ -90,7 +90,6 @@ function mainGameLoop() {
     if (player_position_y + radius + speed <= canvas.height) {
       player_position_y = player_position_y + speed;
     }
-    player_position_y = player_position_y + speed; // Move DOWN
   }
   if (keysPressed.a === true) {
     if (player_position_x - radius - speed >= 0) {
