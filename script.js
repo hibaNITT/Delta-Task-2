@@ -5,8 +5,9 @@ const canvas = document.getElementById("gameCanvas");
 // This is what we will use to draw on the canvas board..2d
 const ctx = canvas.getContext("2d");
 
-var player_position_x = 90; //  the player is inside Sector 1
-var player_position_y = 85;
+// Place the player outside the generated room grid (left edge)
+var player_position_x = 15;
+var player_position_y = canvas.height / 2;
 
 //CREATING ROOMS DYNAMICALLY
 
@@ -15,16 +16,22 @@ var sectorRooms = [];
 
 var gridColumns = 5;
 var gridRows = 4;
-var roomWidth = 136;
-var roomHeight = 125;
-var wallPadding = 20;
+var roomWidth = 110;
+var roomHeight = 110;
+var wallPadding = 40;
+
+// Calculate centered starting offsets so the whole grid is centered within the canvas
+var totalGridWidth = gridColumns * roomWidth + (gridColumns + 1) * wallPadding;
+var totalGridHeight = gridRows * roomHeight + (gridRows + 1) * wallPadding;
+var startX = (canvas.width - totalGridWidth) / 2 + wallPadding;
+var startY = (canvas.height - totalGridHeight) / 2 + wallPadding;
 
 // Construct the 20 rooms dynamically
 for (var row = 0; row < gridRows; row++) {
   for (var col = 0; col < gridColumns; col++) {
     // Calculate the exact pixel coordinates on the canvas for this room
-    var roomX = wallPadding + col * (roomWidth + wallPadding);
-    var roomY = wallPadding + row * (roomHeight + wallPadding);
+    var roomX = startX + col * (roomWidth + wallPadding);
+    var roomY = startY + row * (roomHeight + wallPadding);
     var sectorNumber = row * gridColumns + col + 1;
 
     // Create the individual room entity blueprint
@@ -81,26 +88,57 @@ function mainGameLoop() {
   var speed = 5;
   var radius = 15;
 
+  var next_x = player_position_x;
+var next_y = player_position_y;
+
   if (keysPressed.w === true) {
     if (player_position_y - radius - speed >= 0) {
-      player_position_y = player_position_y - speed;
+      next_y = player_position_y - speed;
     }
   }
   if (keysPressed.s === true) {
     if (player_position_y + radius + speed <= canvas.height) {
-      player_position_y = player_position_y + speed;
+      next_y = player_position_y + speed;
     }
   }
   if (keysPressed.a === true) {
     if (player_position_x - radius - speed >= 0) {
-      player_position_x = player_position_x - speed;
+      next_x = player_position_x - speed;
     }
   }
   if (keysPressed.d === true) {
     if (player_position_x + radius + speed <= canvas.width) {
-      player_position_x = player_position_x + speed;
+      next_x = player_position_x + speed;
     }
   }
+
+  //INTEGRATING THE SAT LOGIC 
+
+//Package these temporary coordinates into a circle object format for SAT
+var futurePlayer = {
+    x: next_x,
+    y: next_y,
+    radius: radius
+};
+
+// Scan through all 20 of our generated sector rooms
+var movementBlocked = false;
+
+for (var r = 0; r < sectorRooms.length; r++) {
+    var targetRoom = sectorRooms[r];
+
+    // Checking if our hypothetical future position overlaps with this room
+    if (darkSpaceCollision_circleWithBox(futurePlayer, targetRoom)) {
+        movementBlocked = true; //shadow overlap 
+        break;                 
+    }
+}
+
+//  Only update your real coordinates if no walls were hit!
+if (!movementBlocked) {
+    player_position_x = next_x;
+    player_position_y = next_y;
+}
 
   // Wiping the rectangle canvas completely clean
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -135,7 +173,7 @@ function mainGameLoop() {
   var angle = Math.atan2(distanceY, distanceX); //absolute angle (in radians)
 
   // Drawing the Weapon pointing line pointing toward the mouse
-  var gunLength = 25;
+  var gunLength = 15;
   var gunX = player_position_x + Math.cos(angle) * gunLength;
   var gunY = player_position_y + Math.sin(angle) * gunLength;
 
@@ -159,7 +197,7 @@ function mainGameLoop() {
   ctx.beginPath();
 
   //general syntax to draw this - .arc(x,y,radius,start,end)....here 360
-  ctx.arc(player_position_x, player_position_y, 15, 0, Math.PI * 2);
+  ctx.arc(player_position_x, player_position_y, 10, 0, Math.PI * 2);
 
   ctx.fill();
   ctx.stroke();
@@ -325,6 +363,63 @@ function darkSpaceProject_box(box, axis) {
 
   return { min: min, max: max };
 }
+
+// Checking if two projected shadow overlap each other on an axis
+function darkSpaceOverlap_check(shadowA, shadowB) {
+    
+    if (shadowA.max < shadowB.min || shadowB.max < shadowA.min) {
+        return false; 
+    }
+    return true; 
+}
+
+//  Separating Axis Theorem - collision
+
+function darkSpaceCollision_circleWithBox(circle, box) {
+    // A standard grid box provides two primary structural axes to check
+    var checkAxes = [
+        { x: 1, y: 0 }, // Horizontal check line
+        { x: 0, y: 1 }  // Vertical check line
+    ];
+
+    // Finding the box corner point that sits closest to our circle center
+    var closestX = Math.max(box.x, Math.min(circle.x, box.x + box.width));
+    var closestY = Math.max(box.y, Math.min(circle.y, box.y + box.height));
+
+    // Calculating a specialized vector tracking from that corner to the circle center
+    var cornerAxisX = circle.x - closestX;
+    var cornerAxisY = circle.y - closestY;
+    var distance = Math.sqrt(cornerAxisX * cornerAxisX + cornerAxisY * cornerAxisY);
+
+    // If the distance is not zero, turn this vector into a clean tracking axis unit line
+    if (distance !== 0) {
+        checkAxes.push({
+            x: cornerAxisX / distance,
+            y: cornerAxisY / distance
+        });
+    }
+
+    // Loop through every single tracking axis to search for an exit gap
+    for (var i = 0; i < checkAxes.length; i++) {
+        var currentAxis = checkAxes[i];
+
+        // Flatten both entities into 1D shadows along this specific line
+        var playerShadow = darkSpaceProject_circle(circle, currentAxis);
+        var wallShadow = darkSpaceProject_box(box, currentAxis);
+
+        // Check if their shadows are currently touching
+        var overlapping = darkSpaceOverlap_check(playerShadow, wallShadow);
+
+        // If even one axis has a gap (no overlap), they are absolutely not colliding
+        if (!overlapping) {
+            return false; 
+        }
+    }
+
+    // If every single shadow overlapped perfectly, we have a confirmed collision
+    return true;
+}
+
 
 //window is a built-in, ultimate master object created automatically.
 //It represents the entire tab window that your webpage is running inside.

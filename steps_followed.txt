@@ -128,3 +128,29 @@ This function takes two separate shadow spans—the player's shadow range and th
 According to the Separating Axis Theorem (SAT), two shapes are colliding if, and only if, their shadows overlap on every single axis we test. 
 If we find even one axis where the shadows don't touch, a gap exists, meaning there is absolutely no collision.
 
+Step 20: assembling our collision function
+
+We are writing the final, core collision function called darkSpaceCollision_circleWithBox.
+
+This function gathers the unique testing directional lines (axes) required to check a circle against a box, 
+loops through them using a loop, and runs our shadow math on every single one. If all axes overlap, it tells the engine a collision is happening.
+
+To thoroughly prove a round player circle is colliding with a rigid box wall, we have to look for gaps from a few strategic angles:
+
+Horizontal Viewpoint: Look directly down the X-axis ({ x: 1, y: 0 }) to see if they overlap left-to-right.
+
+Vertical Viewpoint: Look directly down the Y-axis ({ x: 0, y: 1 }) to see if they overlap top-to-bottom.
+
+The Corner Viewpoint: Look along a custom diagonal vector pointing from the box's closest corner straight toward the center of the circle. 
+This makes sure our engine handles rounded corner slides perfectly!
+
+If our engine scans through those viewpoints and finds even a single gap, it exits early and returns false. 
+If it finishes checking all views and finds zero gaps, it safely guarantees a collision is occurring.
+
+Step 21: Integrating the SAT logic into the Loop
+
+Instead of letting the player move forward completely unchecked, we will write a preventive check:
+ if the user's next step causes an overlap with any of our 20 sector rooms, we will cancel the movement to make the wall feel solid!
+
+darkSpaceCollision_circleWithBox math right before updating the coordinates, . 
+If the math detects a shadow overlap, we tell the engine to keep the player right where they are.
