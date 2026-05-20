@@ -113,32 +113,59 @@ var next_y = player_position_y;
   }
 
   //INTEGRATING THE SAT LOGIC 
+  //INTEGRATING THE SAT LOGIC 
 
-//Package these temporary coordinates into a circle object format for SAT
-var futurePlayer = {
-    x: next_x,
-    y: next_y,
-    radius: radius
-};
+  // Prepare three tentative positions: X-only and Y-only
+  var futureX = { x: next_x, y: player_position_y, radius: radius };
+  var futureY = { x: player_position_x, y: next_y, radius: radius };
 
-// Scan through all 20 of our generated sector rooms
-var movementBlocked = false;
+  // Track whether movement along each axis is blocked
+  var blockX = false;
+  var blockY = false;
 
-for (var r = 0; r < sectorRooms.length; r++) {
+  for (var r = 0; r < sectorRooms.length; r++) {
     var targetRoom = sectorRooms[r];
 
-    // Checking if our hypothetical future position overlaps with this room
-    if (darkSpaceCollision_circleWithBox(futurePlayer, targetRoom)) {
-        movementBlocked = true; //shadow overlap 
-        break;                 
+    // If the player is already inside this room, skip collision checks for it
+    if (
+      player_position_x >= targetRoom.x &&
+      player_position_x <= targetRoom.x + targetRoom.width &&
+      player_position_y >= targetRoom.y &&
+      player_position_y <= targetRoom.y + targetRoom.height
+    ) {
+      continue;
     }
-}
 
-//  Only update your real coordinates if no walls were hit!
-if (!movementBlocked) {
+    if (!blockX && darkSpaceCollision_circleWithBox(futureX, targetRoom)) {
+      blockX = true;
+    }
+    if (!blockY && darkSpaceCollision_circleWithBox(futureY, targetRoom)) {
+      blockY = true;
+    }
+
+    if (blockX && blockY) break;
+  }
+
+  // Compute deltas attempted this frame
+  var deltaX = next_x - player_position_x;
+  var deltaY = next_y - player_position_y;
+
+  // Weaker bounce factor per user request
+  var bounceFactor = 0.2;
+
+  // Apply X movement or a small bounce if blocked
+  if (!blockX) {
     player_position_x = next_x;
+  } else if (deltaX !== 0) {
+    player_position_x = player_position_x - Math.sign(deltaX) * Math.abs(deltaX) * bounceFactor;
+  }
+
+  // Apply Y movement or a small bounce if blocked
+  if (!blockY) {
     player_position_y = next_y;
-}
+  } else if (deltaY !== 0) {
+    player_position_y = player_position_y - Math.sign(deltaY) * Math.abs(deltaY) * bounceFactor;
+  }
 
   // Wiping the rectangle canvas completely clean
   ctx.clearRect(0, 0, canvas.width, canvas.height);
