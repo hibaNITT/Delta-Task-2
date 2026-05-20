@@ -330,7 +330,7 @@ function darkSpaceProject_box(box, axis) {
 //It represents the entire tab window that your webpage is running inside.
 
 // Event Listener for When a key is pressed
-window.addEventListener("keydown", function (event) {
+document.addEventListener("keydown", function (event) {
   var keyName = event.key.toLowerCase(); //to avoid capslock
   if (keyName in keysPressed) {
     keysPressed[keyName] = true;
@@ -338,7 +338,7 @@ window.addEventListener("keydown", function (event) {
 });
 
 //  Event Listener for When a key is released
-window.addEventListener("keyup", function (event) {
+document.addEventListener("keyup", function (event) {
   var keyName = event.key.toLowerCase();
   if (keyName in keysPressed) {
     keysPressed[keyName] = false;
@@ -356,9 +356,11 @@ window.addEventListener("mousemove", function (event) {
 });
 
 // Hardware Listener for gun shooting - Mouse Clicks
-window.addEventListener("mousedown", function (event) {
+canvas.addEventListener("mousedown", function (event) {
   // Only fire if the player clicks the primary left mouse button (button 0)
   if (event.button === 0) {
+    event.preventDefault();
+
     // Recalculate the current angle from the player to the cursor position
     var distanceX = mouseX - player_position_x;
     var distanceY = mouseY - player_position_y;

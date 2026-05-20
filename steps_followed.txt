@@ -119,3 +119,12 @@ To safely calculate its 1D shadow span, we have to:
 Grab all 4 absolute corner points of the wall.
 Flatten each point into a single coordinate position on our axis line using darkSpaceVector_formula.
 Track which corner landed the furthest to the left (our absolute min) and which corner landed the furthest to the right - our absolute max
+
+Step 19: Detecting the Shadow Overlap - 
+We are writing a small mathematical evaluator function called darkSpaceOverlap_check.
+This function takes two separate shadow spans—the player's shadow range and the wall box's shadow range—and
+ calculates whether they are currently occupying the same space on our measuring axis line.
+
+According to the Separating Axis Theorem (SAT), two shapes are colliding if, and only if, their shadows overlap on every single axis we test. 
+If we find even one axis where the shadows don't touch, a gap exists, meaning there is absolutely no collision.
+
