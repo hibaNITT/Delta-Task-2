@@ -86,10 +86,10 @@ function mainGameLoop() {
 
   //detecting keyboard clicks
   var speed = 5;
-  var radius = 15;
+  var radius = 10;
 
   var next_x = player_position_x;
-var next_y = player_position_y;
+  var next_y = player_position_y;
 
   if (keysPressed.w === true) {
     if (player_position_y - radius - speed >= 0) {
@@ -112,8 +112,8 @@ var next_y = player_position_y;
     }
   }
 
-  //INTEGRATING THE SAT LOGIC 
-  //INTEGRATING THE SAT LOGIC 
+  //INTEGRATING THE SAT LOGIC
+  //INTEGRATING THE SAT LOGIC
 
   // Prepare three tentative positions: X-only and Y-only
   var futureX = { x: next_x, y: player_position_y, radius: radius };
@@ -157,14 +157,16 @@ var next_y = player_position_y;
   if (!blockX) {
     player_position_x = next_x;
   } else if (deltaX !== 0) {
-    player_position_x = player_position_x - Math.sign(deltaX) * Math.abs(deltaX) * bounceFactor;
+    player_position_x =
+      player_position_x - Math.sign(deltaX) * Math.abs(deltaX) * bounceFactor;
   }
 
   // Apply Y movement or a small bounce if blocked
   if (!blockY) {
     player_position_y = next_y;
   } else if (deltaY !== 0) {
-    player_position_y = player_position_y - Math.sign(deltaY) * Math.abs(deltaY) * bounceFactor;
+    player_position_y =
+      player_position_y - Math.sign(deltaY) * Math.abs(deltaY) * bounceFactor;
   }
 
   // Wiping the rectangle canvas completely clean
@@ -238,6 +240,64 @@ var next_y = player_position_y;
     currentBullet.x += currentBullet.vx;
     currentBullet.y += currentBullet.vy;
 
+    //BOUNCE DETECTOR
+    for (var r = 0; r < sectorRooms.length; r++) {
+      var activeRoom = sectorRooms[r];
+
+      if (darkSpaceCollision_circleWithBox(currentBullet, activeRoom)) {
+        var xAxis = { x: 1, y: 0 };
+        var yAxis = { x: 0, y: 1 };
+
+        // Measure shadow overlap on the horizontal axis
+        var bulletSpanX = darkSpaceProject_circle(currentBullet, xAxis);
+        var roomSpanX = darkSpaceProject_box(activeRoom, xAxis);
+        // Measure shadow overlap on the vertical axis
+        var bulletSpanY = darkSpaceProject_circle(currentBullet, yAxis);
+        var roomSpanY = darkSpaceProject_box(activeRoom, yAxis);
+
+        // Compute penetration amounts along each axis (how far they overlap)
+        var overlapXamt =
+          Math.min(bulletSpanX.max, roomSpanX.max) -
+          Math.max(bulletSpanX.min, roomSpanX.min);
+        var overlapYamt =
+          Math.min(bulletSpanY.max, roomSpanY.max) -
+          Math.max(bulletSpanY.min, roomSpanY.min);
+
+        // Angle of Incidence Reflection Engine: resolve along smallest penetration axis
+        if (overlapXamt < overlapYamt) {
+          // Struck a vertical face (side wall): invert horizontal velocity
+          currentBullet.vx = -currentBullet.vx;
+
+          // Push bullet just outside the wall on the X axis
+          if (currentBullet.x < activeRoom.x + activeRoom.width / 2) {
+            currentBullet.x = activeRoom.x - (currentBullet.radius || 4) - 0.1;
+          } else {
+            currentBullet.x =
+              activeRoom.x +
+              activeRoom.width +
+              (currentBullet.radius || 4) +
+              0.1;
+          }
+        } else {
+          // Struck a horizontal face (ceiling/floor): invert vertical velocity
+          currentBullet.vy = -currentBullet.vy;
+
+          // Push bullet just outside the wall on the Y axis
+          if (currentBullet.y < activeRoom.y + activeRoom.height / 2) {
+            currentBullet.y = activeRoom.y - (currentBullet.radius || 4) - 0.1;
+          } else {
+            currentBullet.y =
+              activeRoom.y +
+              activeRoom.height +
+              (currentBullet.radius || 4) +
+              0.1;
+          }
+        }
+
+        break; // Impact resolved for this bullet frame ... skip remaining rooms
+      }
+    }
+
     // Offscreen Cleanup
     if (
       currentBullet.x < -10 ||
@@ -285,6 +345,7 @@ function appendBulletNode(bulletData) {
     y: bulletData.y,
     vx: bulletData.vx,
     vy: bulletData.vy,
+    radius: bulletData.radius || 4,
     next: null,
     prev: null,
   };
@@ -393,60 +454,60 @@ function darkSpaceProject_box(box, axis) {
 
 // Checking if two projected shadow overlap each other on an axis
 function darkSpaceOverlap_check(shadowA, shadowB) {
-    
-    if (shadowA.max < shadowB.min || shadowB.max < shadowA.min) {
-        return false; 
-    }
-    return true; 
+  if (shadowA.max < shadowB.min || shadowB.max < shadowA.min) {
+    return false;
+  }
+  return true;
 }
 
 //  Separating Axis Theorem - collision
 
 function darkSpaceCollision_circleWithBox(circle, box) {
-    // A standard grid box provides two primary structural axes to check
-    var checkAxes = [
-        { x: 1, y: 0 }, // Horizontal check line
-        { x: 0, y: 1 }  // Vertical check line
-    ];
+  // A standard grid box provides two primary structural axes to check
+  var checkAxes = [
+    { x: 1, y: 0 }, // Horizontal check line
+    { x: 0, y: 1 }, // Vertical check line
+  ];
 
-    // Finding the box corner point that sits closest to our circle center
-    var closestX = Math.max(box.x, Math.min(circle.x, box.x + box.width));
-    var closestY = Math.max(box.y, Math.min(circle.y, box.y + box.height));
+  // Finding the box corner point that sits closest to our circle center
+  var closestX = Math.max(box.x, Math.min(circle.x, box.x + box.width));
+  var closestY = Math.max(box.y, Math.min(circle.y, box.y + box.height));
 
-    // Calculating a specialized vector tracking from that corner to the circle center
-    var cornerAxisX = circle.x - closestX;
-    var cornerAxisY = circle.y - closestY;
-    var distance = Math.sqrt(cornerAxisX * cornerAxisX + cornerAxisY * cornerAxisY);
+  // Calculating a specialized vector tracking from that corner to the circle center
+  var cornerAxisX = circle.x - closestX;
+  var cornerAxisY = circle.y - closestY;
+  var distance = Math.sqrt(
+    cornerAxisX * cornerAxisX + cornerAxisY * cornerAxisY,
+  );
 
-    // If the distance is not zero, turn this vector into a clean tracking axis unit line
-    if (distance !== 0) {
-        checkAxes.push({
-            x: cornerAxisX / distance,
-            y: cornerAxisY / distance
-        });
+  // If the distance is not zero, turn this vector into a clean tracking axis unit line
+  if (distance !== 0) {
+    checkAxes.push({
+      x: cornerAxisX / distance,
+      y: cornerAxisY / distance,
+    });
+  }
+
+  // Loop through every single tracking axis to search for an exit gap
+  for (var i = 0; i < checkAxes.length; i++) {
+    var currentAxis = checkAxes[i];
+
+    // Flatten both entities into 1D shadows along this specific line
+    var playerShadow = darkSpaceProject_circle(circle, currentAxis);
+    var wallShadow = darkSpaceProject_box(box, currentAxis);
+
+    // Check if their shadows are currently touching
+    var overlapping = darkSpaceOverlap_check(playerShadow, wallShadow);
+
+    // If even one axis has a gap (no overlap), they are absolutely not colliding
+    if (!overlapping) {
+      return false;
     }
+  }
 
-    // Loop through every single tracking axis to search for an exit gap
-    for (var i = 0; i < checkAxes.length; i++) {
-        var currentAxis = checkAxes[i];
-
-        // Flatten both entities into 1D shadows along this specific line
-        var playerShadow = darkSpaceProject_circle(circle, currentAxis);
-        var wallShadow = darkSpaceProject_box(box, currentAxis);
-
-        // Check if their shadows are currently touching
-        var overlapping = darkSpaceOverlap_check(playerShadow, wallShadow);
-
-        // If even one axis has a gap (no overlap), they are absolutely not colliding
-        if (!overlapping) {
-            return false; 
-        }
-    }
-
-    // If every single shadow overlapped perfectly, we have a confirmed collision
-    return true;
+  // If every single shadow overlapped perfectly, we have a confirmed collision
+  return true;
 }
-
 
 //window is a built-in, ultimate master object created automatically.
 //It represents the entire tab window that your webpage is running inside.
@@ -483,9 +544,14 @@ canvas.addEventListener("mousedown", function (event) {
   if (event.button === 0) {
     event.preventDefault();
 
-    // Recalculate the current angle from the player to the cursor position
-    var distanceX = mouseX - player_position_x;
-    var distanceY = mouseY - player_position_y;
+    // Use the actual click coordinates (not the last mousemove) so bullets match click angle
+    var canvasBounds = canvas.getBoundingClientRect();
+    var clickX = event.clientX - canvasBounds.left;
+    var clickY = event.clientY - canvasBounds.top;
+
+    // Recalculate the current angle from the player to the click position
+    var distanceX = clickX - player_position_x;
+    var distanceY = clickY - player_position_y;
     var currentAngle = Math.atan2(distanceY, distanceX);
 
     // Find the exact tip of the gun where the bullet should appear
@@ -506,6 +572,7 @@ canvas.addEventListener("mousedown", function (event) {
       y: bulletStartY,
       vx: velocityX,
       vy: velocityY,
+      radius: 4,
     };
 
     // Inject the bullet package directly into our linked list

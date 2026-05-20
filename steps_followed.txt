@@ -154,3 +154,8 @@ Instead of letting the player move forward completely unchecked, we will write a
 
 darkSpaceCollision_circleWithBox math right before updating the coordinates, . 
 If the math detects a shadow overlap, we tell the engine to keep the player right where they are.
+
+Step 23: bouncing  Bullets on Wall Impact
+
+If the horizontal overlap (overlapX) is narrower, it hit a vertical wall face (left or right side). We reverse the horizontal direction: vx = -vx.
+If the vertical overlap (overlapY) is narrower, it hit a horizontal wall face (top or bottom side). We reverse the vertical direction: vy = -vy.
