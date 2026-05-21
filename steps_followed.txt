@@ -159,3 +159,40 @@ Step 23: bouncing  Bullets on Wall Impact
 
 If the horizontal overlap (overlapX) is narrower, it hit a vertical wall face (left or right side). We reverse the horizontal direction: vx = -vx.
 If the vertical overlap (overlapY) is narrower, it hit a horizontal wall face (top or bottom side). We reverse the vertical direction: vy = -vy.
+
+step 24 - creating the enimies state  - 
+declare our global tracking arrays and structural constants needed to spawn and keep track of autonomous enemies
+
+from task
+"Each bot must run its own state machine covering at minimum: idle/patrol → alert → chase → attack → death. Transitions should be triggered by detection events."
+
+Step 25: Creating the Enemy Function
+
+We are writing a brand-new function called spawnEnemiesInRooms(). 
+This function will automatically look at your 20 generated sectorRooms, pick the center point of each room, and create an enemy bot object packed with health variables, coordinate tracking, velocities, and its initial active behavior state (BOT_STATE_IDLE).
+
+Step 26: Rendering Enemy Bots on the Canvas
+We are going to write a dedicated rendering function inside your game loop that reads our enemies data array and draws each bot as a visual shape onto your HTML Canvas.
+
+Step 27: Implementing Enemy Patrol States
+We are going to give our enemy bots a basic Patrol State. Instead of standing frozen in the center of their rooms, each bot will pick a nearby random target point inside its sector and smoothly walk toward it. 
+Once it reaches that destination, it will pause briefly, pick a new random spot, and head there.
+
+Step 28: Updating Patrol Movement Each Frame
+We added a small enemy update function that runs before drawing. It checks whether a bot is in its idle/patrol state, moves it toward its patrol target, pauses when it arrives, and keeps it inside its own room.
+
+Why this step matters:
+- It gives the enemies their first real movement behavior.
+- It keeps the bot logic simple for beginners, because the patrol movement is separate from the drawing code.
+- It prepares the game for the next AI states like alert, chase, and attack.
+
+Step 29: Planned Next Move - Enemy Detection and Alert State
+Next we will give each enemy a simple detection rule so it can notice the player and switch from idle/patrol into alert. After that, we can build the chase state one small piece at a time.
+
+Step 30: Enemy Detection and Alert State Added
+We added a basic distance check so enemies can notice the player when the player gets close. When that happens, the bot switches from patrol into alert and stops moving for a moment.
+
+Why this step matters:
+- It connects the enemy AI to the player instead of letting enemies wander forever.
+- It gives us the first real state change in the enemy state machine.
+- It sets up the next step, which is making alerted enemies chase the player.

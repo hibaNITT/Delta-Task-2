@@ -26,6 +26,21 @@ var totalGridHeight = gridRows * roomHeight + (gridRows + 1) * wallPadding;
 var startX = (canvas.width - totalGridWidth) / 2 + wallPadding;
 var startY = (canvas.height - totalGridHeight) / 2 + wallPadding;
 
+//declaring state of enemy bots
+//assigning numbers to each state so that its easy to apply checks
+
+var BOT_STATE_IDLE = 0;
+var BOT_STATE_ALERT = 1;
+var BOT_STATE_CHASE = 2;
+var BOT_STATE_ATTACK = 3;
+var BOT_STATE_DEATH = 4;
+
+// Early enemy movement settings for patrol behavior
+var enemyPatrolSpeed = 1.2;
+var enemyPatrolWaitFrames = 45;
+var enemyDetectionRange = 140;
+var enemyAlertDuration = 60;
+
 // Construct the 20 rooms dynamically
 for (var row = 0; row < gridRows; row++) {
   for (var col = 0; col < gridColumns; col++) {
@@ -195,6 +210,9 @@ function mainGameLoop() {
   ctx.fillStyle = "#ffff33";
   ctx.strokeStyle = "#000000"; // Black boundary outline
   ctx.lineWidth = 3;
+
+  updateEnemyUnits();
+  drawEnemyUnits();
 
   // Calculating the angle between player center and mouse cursor
   var distanceX = mouseX - player_position_x;
@@ -366,6 +384,44 @@ function appendBulletNode(bulletData) {
   }
 }
 
+// Function to dynamically place an enemy at the center of each sector room
+function spawnEnemiesInRooms() {
+  // Clear any existing items in the array to avoid double spawning
+  single_global_state_object.enemies = [];
+
+  // Loop through all 20 rooms generated in our grid
+  for (var i = 0; i < sectorRooms.length; i++) {
+    var room = sectorRooms[i];
+
+    // Calculating the exact center coordinates of the room
+    var centerX = room.x + room.width / 2;
+    var centerY = room.y + room.height / 2;
+
+    // Construct the complete blueprint object for this specific bot
+    var enemyBot = {
+      x: centerX,
+      y: centerY,
+      vx: (Math.random() - 0.5) * 2, // Random starting X speed between -1 and 1
+      vy: (Math.random() - 0.5) * 2, // Random starting Y speed between -1 and 1
+      radius: 8, // Physical size of the bot
+      health: 3, // Takes 3 bullet hits to destroy
+      maxHealth: 3, // Tracking baseline for a future health bar
+      state: BOT_STATE_IDLE, // Begins in the idle state machine phase
+      currentRoomIndex: i, // Remembers which room number it belongs to
+      patrolTargetX: centerX,
+      patrolTargetY: centerY,
+      waitTimer: 0,
+      alertTimer: 0,
+    };
+
+    // Push the newly created bot into our master state dictionary array
+    single_global_state_object.enemies.push(enemyBot);
+  }
+}
+
+// Call the function immediately to populate the map when the script runs
+spawnEnemiesInRooms();
+
 // SAT helper functions
 
 // This is our first required custom vector helper function
@@ -527,6 +583,106 @@ document.addEventListener("keyup", function (event) {
     keysPressed[keyName] = false;
   }
 });
+
+// Update enemy patrol movement before drawing them
+function updateEnemyUnits() {
+  var currentBots = single_global_state_object.enemies;
+
+  for (var i = 0; i < currentBots.length; i++) {
+    var bot = currentBots[i];
+
+    if (bot.state === BOT_STATE_DEATH) {
+      continue;
+    }
+
+    var room = sectorRooms[bot.currentRoomIndex];
+
+    //calculating distance to player
+    var distanceToPlayerX = player_position_x - bot.x;
+    var distanceToPlayerY = player_position_y - bot.y;
+    var distanceToPlayer = Math.sqrt(
+      distanceToPlayerX * distanceToPlayerX +
+        distanceToPlayerY * distanceToPlayerY,
+    );
+
+    if (
+      bot.state === BOT_STATE_IDLE &&
+      distanceToPlayer <= enemyDetectionRange
+    ) {
+      bot.state = BOT_STATE_ALERT;
+      bot.alertTimer = enemyAlertDuration;
+      bot.waitTimer = 0;
+      bot.patrolTargetX = bot.x;
+      bot.patrolTargetY = bot.y;
+    }
+
+    if (bot.state === BOT_STATE_IDLE) {
+      if (bot.waitTimer > 0) {
+        bot.waitTimer -= 1;
+      } else {
+        var dx = bot.patrolTargetX - bot.x;
+        var dy = bot.patrolTargetY - bot.y;
+        var distanceToTarget = Math.sqrt(dx * dx + dy * dy);
+
+        if (distanceToTarget < 4) {
+          bot.waitTimer = enemyPatrolWaitFrames;
+          bot.patrolTargetX = room.x + 16 + Math.random() * (room.width - 32);
+          bot.patrolTargetY = room.y + 16 + Math.random() * (room.height - 32);
+        } else {
+          bot.vx = (dx / distanceToTarget) * enemyPatrolSpeed;
+          bot.vy = (dy / distanceToTarget) * enemyPatrolSpeed;
+          bot.x += bot.vx;
+          bot.y += bot.vy;
+        }
+      }
+
+      // Keep patrol enemies inside their assigned room boundaries.
+      bot.x = Math.max(
+        room.x + bot.radius,
+        Math.min(bot.x, room.x + room.width - bot.radius),
+      );
+      bot.y = Math.max(
+        room.y + bot.radius,
+        Math.min(bot.y, room.y + room.height - bot.radius),
+      );
+    } else if (bot.state === BOT_STATE_ALERT) {
+      if (bot.alertTimer > 0) {
+        bot.alertTimer -= 1;
+      }
+      //so alert state is for the player to get aware , then when alert timer ends the bot starts to attack
+      // Stay locked in place while alert so the next step can turn this into chase.
+      bot.vx = 0;
+      bot.vy = 0;
+
+      // If the player leaves range before the alert ends, fall back to patrol.
+      if (bot.alertTimer <= 0 && distanceToPlayer > enemyDetectionRange) {
+        bot.state = BOT_STATE_IDLE;
+        bot.waitTimer = enemyPatrolWaitFrames;
+      }
+    }
+  }
+}
+
+//rendering enimies on canvas
+function drawEnemyUnits() {
+  //  Pull the live array of enemies from our global state
+  var currentBots = single_global_state_object.enemies;
+
+  // Loop through every single bot
+  for (var i = 0; i < currentBots.length; i++) {
+    var bot = currentBots[i];
+
+    //  Begin a fresh drawing path on the canvas context
+    ctx.beginPath();
+
+    //bot body
+    ctx.arc(bot.x, bot.y, 10, 0, Math.PI * 2);
+
+    ctx.fillStyle = "#FF3333";
+    ctx.fill();
+    ctx.closePath();
+  }
+}
 
 // Hardware Listener for Mouse Tracking
 window.addEventListener("mousemove", function (event) {
