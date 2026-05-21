@@ -213,3 +213,13 @@ Why this step matters:
 - It starts the player health system required for normal mode.
 - It prepares the next step, which is showing the health on the screen and adding game-over handling.
 
+Step 33: HUD Display for the health feature -Heads-Up Display.
+We added a simple on-screen HUD in the top-left corner. It shows the player health, the current score, and the elapsed time so the game feels more complete and easier to play.
+
+Why this step matters:
+- It makes the game state visible to the player.
+- It covers one of the normal mode requirements.
+- It prepares the next step, which is adding game-over and restart handling when health reaches zero.
+
+
+

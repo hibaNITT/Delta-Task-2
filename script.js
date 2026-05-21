@@ -1,5 +1,8 @@
 // Linking code to the HTML element
 const canvas = document.getElementById("gameCanvas");
+const hudHealth = document.getElementById("hudHealth");
+const hudScore = document.getElementById("hudScore");
+const hudTime = document.getElementById("hudTime");
 
 //This creates our drawing context (ctx) object.
 // This is what we will use to draw on the canvas board..2d
@@ -10,6 +13,8 @@ var player_position_x = 15;
 var player_position_y = canvas.height / 2;
 var player_max_health = 10;
 var player_health = player_max_health;
+var gameScore = 0;
+var gameStartTime = Date.now();
 
 //CREATING ROOMS DYNAMICALLY
 
@@ -254,6 +259,8 @@ function mainGameLoop() {
   ctx.fill();
   ctx.stroke();
 
+  updateHUD();
+
   var currentBullet = single_global_state_object.bulletHead;
 
   while (currentBullet !== null) {
@@ -359,6 +366,15 @@ function mainGameLoop() {
   //It tells the browser window to call main_game_loop again right before the monitor refreshes next.
   //This creates an elegant, highly optimized, non-stop recursive animation loop.
   requestAnimationFrame(mainGameLoop);
+}
+
+function updateHUD() {
+  var elapsedSeconds = Math.floor((Date.now() - gameStartTime) / 1000);
+
+  hudHealth.textContent =
+    "Health: " + player_health + " / " + player_max_health;
+  hudScore.textContent = "Score: " + gameScore;
+  hudTime.textContent = "Time: " + elapsedSeconds + "s";
 }
 
 function appendBulletNode(bulletData) {
