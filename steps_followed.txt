@@ -222,4 +222,26 @@ Why this step matters:
 - It prepares the next step, which is adding game-over and restart handling when health reaches zero.
 
 
+Step 34: Room Doors and Player Entry Added
+We added doorway openings to each room and changed the movement collision check so the player can pass through those openings. The doors are also drawn on the map so the entry points are visible.
+
+Why this step matters:
+- It turns the room grid into a connected space instead of sealed blocks.
+- It lets the player enter rooms through clear openings.
+
+
+Step 35: Enemy Health and Death on Bullet Hit
+We added health to enemy bots and made the player's bullets damage them. When an enemy's health reaches zero, the bot switches to the death state, stops acting, disappears from the room, and gives the player score.
+
+Why this step matters:
+- It completes the player-vs-enemy combat loop.
+- It gives enemies a proper health system like the player.
+
+
+
+
+
+
+
+
 

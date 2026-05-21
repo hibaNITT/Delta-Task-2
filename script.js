@@ -33,6 +33,82 @@ var totalGridHeight = gridRows * roomHeight + (gridRows + 1) * wallPadding;
 var startX = (canvas.width - totalGridWidth) / 2 + wallPadding;
 var startY = (canvas.height - totalGridHeight) / 2 + wallPadding;
 
+// Door settings for room transitions
+var roomDoorWidth = 28;
+var roomDoorThickness = 12;
+
+function darkSpacePoint_inRect(pointX, pointY, rectangle) {
+  return (
+    pointX >= rectangle.x &&
+    pointX <= rectangle.x + rectangle.width &&
+    pointY >= rectangle.y &&
+    pointY <= rectangle.y + rectangle.height
+  );
+}
+
+function buildRoomDoors(roomX, roomY, roomWidth, roomHeight, sectorNumber) {
+  var halfDoor = roomDoorWidth / 2;
+  var halfThickness = roomDoorThickness / 2;
+
+  var doorSideIndex = sectorNumber % 4;
+
+  if (doorSideIndex === 1) {
+    return [
+      {
+        side: "top",
+        x: roomX + roomWidth / 2 - halfDoor,
+        y: roomY - halfThickness,
+        width: roomDoorWidth,
+        height: roomDoorThickness,
+      },
+    ];
+  }
+
+  if (doorSideIndex === 2) {
+    return [
+      {
+        side: "right",
+        x: roomX + roomWidth - halfThickness,
+        y: roomY + roomHeight / 2 - halfDoor,
+        width: roomDoorThickness,
+        height: roomDoorWidth,
+      },
+    ];
+  }
+
+  if (doorSideIndex === 3) {
+    return [
+      {
+        side: "bottom",
+        x: roomX + roomWidth / 2 - halfDoor,
+        y: roomY + roomHeight - halfThickness,
+        width: roomDoorWidth,
+        height: roomDoorThickness,
+      },
+    ];
+  }
+
+  return [
+    {
+      side: "left",
+      x: roomX - halfThickness,
+      y: roomY + roomHeight / 2 - halfDoor,
+      width: roomDoorThickness,
+      height: roomDoorWidth,
+    },
+  ];
+}
+
+function darkSpacePoint_inAnyDoor(pointX, pointY, room) {
+  for (var i = 0; i < room.doors.length; i++) {
+    if (darkSpacePoint_inRect(pointX, pointY, room.doors[i])) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 //declaring state of enemy bots
 //assigning numbers to each state so that its easy to apply checks
 
@@ -44,12 +120,15 @@ var BOT_STATE_DEATH = 4;
 
 var enemyPatrolSpeed = 1.2;
 var enemyPatrolWaitFrames = 45;
-var enemyDetectionRange = 140;
+var enemyDetectionRange = 100;
 var enemyAlertDuration = 60;
 var enemyChaseSpeed = 1.8;
 var enemyAttackRange = 28;
 var enemyAttackDamage = 1;
 var enemyAttackCooldownFrames = 30;
+var enemyMaxHealth = 3;
+var enemyBulletDamage = 1;
+var enemyKillScore = 1;
 
 // Construct the 20 rooms dynamically
 for (var row = 0; row < gridRows; row++) {
@@ -66,6 +145,7 @@ for (var row = 0; row < gridRows; row++) {
       width: roomWidth,
       height: roomHeight,
       name: "Sector " + sectorNumber,
+      doors: buildRoomDoors(roomX, roomY, roomWidth, roomHeight, sectorNumber),
     };
 
     //SAT
@@ -151,20 +231,29 @@ function mainGameLoop() {
   for (var r = 0; r < sectorRooms.length; r++) {
     var targetRoom = sectorRooms[r];
 
-    // If the player is already inside this room, skip collision checks for it
-    if (
-      player_position_x >= targetRoom.x &&
-      player_position_x <= targetRoom.x + targetRoom.width &&
-      player_position_y >= targetRoom.y &&
-      player_position_y <= targetRoom.y + targetRoom.height
-    ) {
-      continue;
-    }
+    var futureXCanUseDoor = darkSpacePoint_inAnyDoor(
+      futureX.x,
+      futureX.y,
+      targetRoom,
+    );
+    var futureYCanUseDoor = darkSpacePoint_inAnyDoor(
+      futureY.x,
+      futureY.y,
+      targetRoom,
+    );
 
-    if (!blockX && darkSpaceCollision_circleWithBox(futureX, targetRoom)) {
+    if (
+      !blockX &&
+      !futureXCanUseDoor &&
+      darkSpaceCollision_circleWithBox(futureX, targetRoom)
+    ) {
       blockX = true;
     }
-    if (!blockY && darkSpaceCollision_circleWithBox(futureY, targetRoom)) {
+    if (
+      !blockY &&
+      !futureYCanUseDoor &&
+      darkSpaceCollision_circleWithBox(futureY, targetRoom)
+    ) {
       blockY = true;
     }
 
@@ -209,6 +298,13 @@ function mainGameLoop() {
     ctx.strokeStyle = "#00d2ff";
     ctx.lineWidth = 2;
     ctx.strokeRect(room.x, room.y, room.width, room.height);
+
+    // Cut openings in the wall outline so the room has visible doors.
+    ctx.fillStyle = "#051a05";
+    for (var d = 0; d < room.doors.length; d++) {
+      var door = room.doors[d];
+      ctx.fillRect(door.x, door.y, door.width, door.height);
+    }
 
     // Render the localized sector designation string in the corner
     ctx.fillStyle = "#00d2ff";
@@ -328,6 +424,48 @@ function mainGameLoop() {
       }
     }
 
+    // Check if the bullet hits any enemy bot.
+    for (var e = 0; e < single_global_state_object.enemies.length; e++) {
+      var enemyBot = single_global_state_object.enemies[e];
+
+      if (enemyBot.state === BOT_STATE_DEATH) {
+        continue;
+      }
+
+      var enemyDistanceX = currentBullet.x - enemyBot.x;
+      var enemyDistanceY = currentBullet.y - enemyBot.y;
+      var enemyHitDistance = Math.sqrt(
+        enemyDistanceX * enemyDistanceX + enemyDistanceY * enemyDistanceY,
+      );
+
+      if (enemyHitDistance <= currentBullet.radius + enemyBot.radius) {
+        enemyBot.health -= enemyBulletDamage;
+
+        if (enemyBot.health <= 0) {
+          enemyBot.health = 0;
+          enemyBot.state = BOT_STATE_DEATH;
+          enemyBot.vx = 0;
+          enemyBot.vy = 0;
+          gameScore += enemyKillScore;
+        }
+
+        if (currentBullet.prev !== null) {
+          currentBullet.prev.next = currentBullet.next;
+        } else {
+          single_global_state_object.bulletHead = currentBullet.next;
+        }
+
+        if (currentBullet.next !== null) {
+          currentBullet.next.prev = currentBullet.prev;
+        } else {
+          single_global_state_object.bulletTail = currentBullet.prev;
+        }
+
+        currentBullet = nextBulletNode;
+        continue;
+      }
+    }
+
     // Offscreen Cleanup
     if (
       currentBullet.x < -10 ||
@@ -425,8 +563,8 @@ function spawnEnemiesInRooms() {
       vx: (Math.random() - 0.5) * 2, // Random starting X speed between -1 and 1
       vy: (Math.random() - 0.5) * 2, // Random starting Y speed between -1 and 1
       radius: 8, // Physical size of the bot
-      health: 3, // Takes 3 bullet hits to destroy
-      maxHealth: 3, // Tracking baseline for a future health bar
+      health: enemyMaxHealth, // Takes a few bullet hits to destroy
+      maxHealth: enemyMaxHealth, // Tracking baseline for a future health bar
       state: BOT_STATE_IDLE, // Begins in the idle state machine phase
       currentRoomIndex: i, // Remembers which room number it belongs to
       patrolTargetX: centerX,
@@ -729,6 +867,10 @@ function drawEnemyUnits() {
   // Loop through every single bot
   for (var i = 0; i < currentBots.length; i++) {
     var bot = currentBots[i];
+
+    if (bot.state === BOT_STATE_DEATH) {
+      continue;
+    }
 
     //  Begin a fresh drawing path on the canvas context
     ctx.beginPath();
