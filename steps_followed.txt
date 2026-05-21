@@ -196,3 +196,20 @@ Why this step matters:
 - It connects the enemy AI to the player instead of letting enemies wander forever.
 - It gives us the first real state change in the enemy state machine.
 - It sets up the next step, which is making alerted enemies chase the player.
+
+Step 31: Chase State Added
+We changed the alert state so that when its timer ends, the bot switches into chase. In chase, the enemy moves toward the player until it gets close enough to begin the attack state.
+
+Why this step matters:
+- It turns the enemy from a passive watcher into an active threat.
+- It completes the patrol -> alert -> chase part of the state machine.
+- It prepares the next step, which is making the attack state actually damage the player.
+
+Step 32: Enemy Attack and Player Health Added
+We gave the attack state a real effect: when a bot stays close enough, it now deals damage to the player on a cooldown. We also added player health so the game can track damage properly.
+
+Why this step matters:
+- It makes the attack state matter in gameplay.
+- It starts the player health system required for normal mode.
+- It prepares the next step, which is showing the health on the screen and adding game-over handling.
+

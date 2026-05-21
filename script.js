@@ -8,6 +8,8 @@ const ctx = canvas.getContext("2d");
 // Place the player outside the generated room grid (left edge)
 var player_position_x = 15;
 var player_position_y = canvas.height / 2;
+var player_max_health = 10;
+var player_health = player_max_health;
 
 //CREATING ROOMS DYNAMICALLY
 
@@ -35,11 +37,14 @@ var BOT_STATE_CHASE = 2;
 var BOT_STATE_ATTACK = 3;
 var BOT_STATE_DEATH = 4;
 
-// Early enemy movement settings for patrol behavior
 var enemyPatrolSpeed = 1.2;
 var enemyPatrolWaitFrames = 45;
 var enemyDetectionRange = 140;
 var enemyAlertDuration = 60;
+var enemyChaseSpeed = 1.8;
+var enemyAttackRange = 28;
+var enemyAttackDamage = 1;
+var enemyAttackCooldownFrames = 30;
 
 // Construct the 20 rooms dynamically
 for (var row = 0; row < gridRows; row++) {
@@ -412,6 +417,7 @@ function spawnEnemiesInRooms() {
       patrolTargetY: centerY,
       waitTimer: 0,
       alertTimer: 0,
+      attackTimer: 0,
     };
 
     // Push the newly created bot into our master state dictionary array
@@ -654,10 +660,46 @@ function updateEnemyUnits() {
       bot.vx = 0;
       bot.vy = 0;
 
-      // If the player leaves range before the alert ends, fall back to patrol.
-      if (bot.alertTimer <= 0 && distanceToPlayer > enemyDetectionRange) {
-        bot.state = BOT_STATE_IDLE;
-        bot.waitTimer = enemyPatrolWaitFrames;
+      // Once the alert timer ends, switch into chase.
+      if (bot.alertTimer <= 0) {
+        bot.state = BOT_STATE_CHASE;
+      }
+    } else if (bot.state === BOT_STATE_CHASE) {
+      if (distanceToPlayer <= enemyAttackRange) {
+        bot.state = BOT_STATE_ATTACK;
+      } else {
+        bot.vx = (distanceToPlayerX / distanceToPlayer) * enemyChaseSpeed;
+        bot.vy = (distanceToPlayerY / distanceToPlayer) * enemyChaseSpeed;
+        bot.x += bot.vx;
+        bot.y += bot.vy;
+      }
+
+      // Keep chasing enemies inside their assigned room boundaries.
+      bot.x = Math.max(
+        room.x + bot.radius,
+        Math.min(bot.x, room.x + room.width - bot.radius),
+      );
+      bot.y = Math.max(
+        room.y + bot.radius,
+        Math.min(bot.y, room.y + room.height - bot.radius),
+      );
+    } else if (bot.state === BOT_STATE_ATTACK) {
+      bot.vx = 0;
+      bot.vy = 0;
+
+      if (distanceToPlayer > enemyAttackRange * 1.5) {
+        bot.state = BOT_STATE_CHASE;
+        bot.attackTimer = 0;
+      } else {
+        if (bot.attackTimer > 0) {
+          bot.attackTimer -= 1;
+        } else {
+          player_health -= enemyAttackDamage;
+          if (player_health < 0) {
+            player_health = 0;
+          }
+          bot.attackTimer = enemyAttackCooldownFrames;
+        }
       }
     }
   }
