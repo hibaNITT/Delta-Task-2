@@ -237,6 +237,14 @@ Why this step matters:
 - It completes the player-vs-enemy combat loop.
 - It gives enemies a proper health system like the player.
 
+Step 36: alert timer to 5 sec
+ made the enemy follow a cleaner flow: patrol first, then a 5-second alert when the player enters detection range, then chase with attack happening at the same time.
+
+Why this step matters:
+- It matches your requested enemy behavior exactly.
+- It gives the player time to enter the room before combat starts.
+- It keeps the enemy moving while it attacks, instead of stopping the chase.
+
 
 
 

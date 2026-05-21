@@ -120,8 +120,8 @@ var BOT_STATE_DEATH = 4;
 
 var enemyPatrolSpeed = 1.2;
 var enemyPatrolWaitFrames = 45;
-var enemyDetectionRange = 100;
-var enemyAlertDuration = 60;
+var enemyDetectionRange = 50;
+var enemyAlertDuration = 300;
 var enemyChaseSpeed = 1.8;
 var enemyAttackRange = 28;
 var enemyAttackDamage = 1;
@@ -571,7 +571,7 @@ function spawnEnemiesInRooms() {
       patrolTargetY: centerY,
       waitTimer: 0,
       alertTimer: 0,
-      attackTimer: 0,
+      attackCooldownTimer: 0,
     };
 
     // Push the newly created bot into our master state dictionary array
@@ -819,13 +819,23 @@ function updateEnemyUnits() {
         bot.state = BOT_STATE_CHASE;
       }
     } else if (bot.state === BOT_STATE_CHASE) {
+      bot.vx = (distanceToPlayerX / distanceToPlayer) * enemyChaseSpeed;
+      bot.vy = (distanceToPlayerY / distanceToPlayer) * enemyChaseSpeed;
+      bot.x += bot.vx;
+      bot.y += bot.vy;
+
       if (distanceToPlayer <= enemyAttackRange) {
-        bot.state = BOT_STATE_ATTACK;
+        if (bot.attackCooldownTimer > 0) {
+          bot.attackCooldownTimer -= 1;
+        } else {
+          player_health -= enemyAttackDamage;
+          if (player_health < 0) {
+            player_health = 0;
+          }
+          bot.attackCooldownTimer = enemyAttackCooldownFrames;
+        }
       } else {
-        bot.vx = (distanceToPlayerX / distanceToPlayer) * enemyChaseSpeed;
-        bot.vy = (distanceToPlayerY / distanceToPlayer) * enemyChaseSpeed;
-        bot.x += bot.vx;
-        bot.y += bot.vy;
+        bot.attackCooldownTimer = 0;
       }
 
       // Keep chasing enemies inside their assigned room boundaries.
@@ -837,24 +847,6 @@ function updateEnemyUnits() {
         room.y + bot.radius,
         Math.min(bot.y, room.y + room.height - bot.radius),
       );
-    } else if (bot.state === BOT_STATE_ATTACK) {
-      bot.vx = 0;
-      bot.vy = 0;
-
-      if (distanceToPlayer > enemyAttackRange * 1.5) {
-        bot.state = BOT_STATE_CHASE;
-        bot.attackTimer = 0;
-      } else {
-        if (bot.attackTimer > 0) {
-          bot.attackTimer -= 1;
-        } else {
-          player_health -= enemyAttackDamage;
-          if (player_health < 0) {
-            player_health = 0;
-          }
-          bot.attackTimer = enemyAttackCooldownFrames;
-        }
-      }
     }
   }
 }
