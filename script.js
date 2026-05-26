@@ -34,7 +34,7 @@ var startX = (canvas.width - totalGridWidth) / 2 + wallPadding;
 var startY = (canvas.height - totalGridHeight) / 2 + wallPadding;
 
 // Door settings for room transitions
-var roomDoorWidth = 28;
+var roomDoorWidth = 40;
 var roomDoorThickness = 12;
 
 function darkSpacePoint_inRect(pointX, pointY, rectangle) {
@@ -46,13 +46,25 @@ function darkSpacePoint_inRect(pointX, pointY, rectangle) {
   );
 }
 
-function buildRoomDoors(roomX, roomY, roomWidth, roomHeight, sectorNumber) {
+function buildRoomDoors(roomX, roomY, roomWidth, roomHeight, row, col) {
   var halfDoor = roomDoorWidth / 2;
   var halfThickness = roomDoorThickness / 2;
 
-  var doorSideIndex = sectorNumber % 4;
+  // Keep one door per room, but place it on a side that makes entry practical.
+  // Left-most rooms open on the left so the player can enter from the starting side.
+  if (col === 0) {
+    return [
+      {
+        side: "left",
+        x: roomX - halfThickness,
+        y: roomY + roomHeight / 2 - halfDoor,
+        width: roomDoorThickness,
+        height: roomDoorWidth,
+      },
+    ];
+  }
 
-  if (doorSideIndex === 1) {
+  if (row === 0) {
     return [
       {
         side: "top",
@@ -64,7 +76,7 @@ function buildRoomDoors(roomX, roomY, roomWidth, roomHeight, sectorNumber) {
     ];
   }
 
-  if (doorSideIndex === 2) {
+  if (col === gridColumns - 1) {
     return [
       {
         side: "right",
@@ -76,7 +88,7 @@ function buildRoomDoors(roomX, roomY, roomWidth, roomHeight, sectorNumber) {
     ];
   }
 
-  if (doorSideIndex === 3) {
+  if (row === gridRows - 1) {
     return [
       {
         side: "bottom",
@@ -109,6 +121,119 @@ function darkSpacePoint_inAnyDoor(pointX, pointY, room) {
   return false;
 }
 
+function buildRoomCollisionWalls(roomX, roomY, roomWidth, roomHeight, door) {
+  var wallThickness = 6;
+  var walls = [];
+
+  // Top wall
+  walls.push({
+    x: roomX,
+    y: roomY,
+    width: roomWidth,
+    height: wallThickness,
+  });
+
+  // Bottom wall
+  walls.push({
+    x: roomX,
+    y: roomY + roomHeight - wallThickness,
+    width: roomWidth,
+    height: wallThickness,
+  });
+
+  // Left wall, split around the door opening when the door is on the left side.
+  if (door.side === "left") {
+    walls.push({
+      x: roomX,
+      y: roomY + wallThickness,
+      width: wallThickness,
+      height: Math.max(0, door.y - (roomY + wallThickness)),
+    });
+    walls.push({
+      x: roomX,
+      y: door.y + door.height,
+      width: wallThickness,
+      height: Math.max(
+        0,
+        roomY + roomHeight - wallThickness - (door.y + door.height),
+      ),
+    });
+  } else {
+    walls.push({
+      x: roomX,
+      y: roomY + wallThickness,
+      width: wallThickness,
+      height: roomHeight - wallThickness * 2,
+    });
+  }
+
+  // Right wall, split around the door opening when the door is on the right side.
+  if (door.side === "right") {
+    walls.push({
+      x: roomX + roomWidth - wallThickness,
+      y: roomY + wallThickness,
+      width: wallThickness,
+      height: Math.max(0, door.y - (roomY + wallThickness)),
+    });
+    walls.push({
+      x: roomX + roomWidth - wallThickness,
+      y: door.y + door.height,
+      width: wallThickness,
+      height: Math.max(
+        0,
+        roomY + roomHeight - wallThickness - (door.y + door.height),
+      ),
+    });
+  } else {
+    walls.push({
+      x: roomX + roomWidth - wallThickness,
+      y: roomY + wallThickness,
+      width: wallThickness,
+      height: roomHeight - wallThickness * 2,
+    });
+  }
+
+  // Top wall, split around the door opening when the door is on the top side.
+  if (door.side === "top") {
+    walls.push({
+      x: roomX + wallThickness,
+      y: roomY,
+      width: Math.max(0, door.x - (roomX + wallThickness)),
+      height: wallThickness,
+    });
+    walls.push({
+      x: door.x + door.width,
+      y: roomY,
+      width: Math.max(
+        0,
+        roomX + roomWidth - wallThickness - (door.x + door.width),
+      ),
+      height: wallThickness,
+    });
+  }
+
+  // Bottom wall, split around the door opening when the door is on the bottom side.
+  if (door.side === "bottom") {
+    walls.push({
+      x: roomX + wallThickness,
+      y: roomY + roomHeight - wallThickness,
+      width: Math.max(0, door.x - (roomX + wallThickness)),
+      height: wallThickness,
+    });
+    walls.push({
+      x: door.x + door.width,
+      y: roomY + roomHeight - wallThickness,
+      width: Math.max(
+        0,
+        roomX + roomWidth - wallThickness - (door.x + door.width),
+      ),
+      height: wallThickness,
+    });
+  }
+
+  return walls;
+}
+
 //declaring state of enemy bots
 //assigning numbers to each state so that its easy to apply checks
 
@@ -137,6 +262,7 @@ for (var row = 0; row < gridRows; row++) {
     var roomX = startX + col * (roomWidth + wallPadding);
     var roomY = startY + row * (roomHeight + wallPadding);
     var sectorNumber = row * gridColumns + col + 1;
+    var roomDoors = buildRoomDoors(roomX, roomY, roomWidth, roomHeight, row, col);
 
     // Create the individual room entity blueprint
     var roomZone = {
@@ -144,20 +270,16 @@ for (var row = 0; row < gridRows; row++) {
       y: roomY,
       width: roomWidth,
       height: roomHeight,
-      name: "Sector " + sectorNumber,
-      doors: buildRoomDoors(roomX, roomY, roomWidth, roomHeight, sectorNumber),
+      name: "Room " + sectorNumber,
+      doors: roomDoors,
+      collisionWalls: buildRoomCollisionWalls(
+        roomX,
+        roomY,
+        roomWidth,
+        roomHeight,
+        roomDoors[0],
+      ),
     };
-
-    //SAT
-    // Clockwise ordering of corners: Top-Left, Top-Right, Bottom-Right, Bottom-Left
-    vertices: [
-      { x: roomX, y: roomY }, // Corner 1
-      { x: roomX + roomWidth, y: roomY }, // Corner 2
-      { x: roomX + roomWidth, y: roomY + roomHeight }, // Corner 3
-      { x: roomX, y: roomY + roomHeight }, // Corner 4
-    ];
-
-    //so to access this we can do sectorRooms[0].vertices[2]
 
     // Push it into our master map registry array
     sectorRooms.push(roomZone);
@@ -231,30 +353,18 @@ function mainGameLoop() {
   for (var r = 0; r < sectorRooms.length; r++) {
     var targetRoom = sectorRooms[r];
 
-    var futureXCanUseDoor = darkSpacePoint_inAnyDoor(
-      futureX.x,
-      futureX.y,
-      targetRoom,
-    );
-    var futureYCanUseDoor = darkSpacePoint_inAnyDoor(
-      futureY.x,
-      futureY.y,
-      targetRoom,
-    );
+    // Only the wall strips should block movement.
+    // The door gap is left out of these collisions
 
-    if (
-      !blockX &&
-      !futureXCanUseDoor &&
-      darkSpaceCollision_circleWithBox(futureX, targetRoom)
-    ) {
-      blockX = true;
-    }
-    if (
-      !blockY &&
-      !futureYCanUseDoor &&
-      darkSpaceCollision_circleWithBox(futureY, targetRoom)
-    ) {
-      blockY = true;
+    for (var w = 0; w < targetRoom.collisionWalls.length; w++) {
+      var wallBox = targetRoom.collisionWalls[w];
+
+      if (!blockX && darkSpaceCollision_circleWithBox(futureX, wallBox)) {
+        blockX = true;
+      }
+      if (!blockY && darkSpaceCollision_circleWithBox(futureY, wallBox)) {
+        blockY = true;
+      }
     }
 
     if (blockX && blockY) break;

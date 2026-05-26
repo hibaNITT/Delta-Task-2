@@ -245,6 +245,25 @@ Why this step matters:
 - It gives the player time to enter the room before combat starts.
 - It keeps the enemy moving while it attacks, instead of stopping the chase.
 
+Step 37: Functional Door Collision Logic Added
+We changed player collision to use the room wall strips only, instead of checking the full room rectangle. That means the doorway gap is now the only passable part of the border.
+
+Why this step matters:
+- It makes the door behave like a real opening.
+- It stops the full room from blocking the player.
+- It keeps the wall solid everywhere except the door gap.
+
+Step 38: building the door
+ the door builder to use the room's row and column so the single door is placed on a sensible side of the room instead of being tied to the sector number.
+
+Why this step matters:
+- It makes the doorway placement predictable.
+- It keeps the first room reachable from the starting side.
+- It matches the functional door collision system cleanly.
+
+
+
+
 
 
 
