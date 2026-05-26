@@ -400,11 +400,36 @@ function mainGameLoop() {
     for (var w = 0; w < targetRoom.collisionWalls.length; w++) {
       var wallBox = targetRoom.collisionWalls[w];
 
+      // Updated collision logic so the player can pass through door openings (checks door overlap before blocking  movement)
+
       if (!blockX && darkSpaceCollision_circleWithBox(futureX, wallBox)) {
-        blockX = true;
+        var collidesWithDoorX = false;
+        for (var di = 0; di < targetRoom.doors.length; di++) {
+          var doorRect = targetRoom.doors[di];
+          if (darkSpaceCollision_circleWithBox(futureX, doorRect)) {
+            collidesWithDoorX = true;
+            break;
+          }
+        }
+
+        if (!collidesWithDoorX) {
+          blockX = true;
+        }
       }
+
       if (!blockY && darkSpaceCollision_circleWithBox(futureY, wallBox)) {
-        blockY = true;
+        var collidesWithDoorY = false;
+        for (var di2 = 0; di2 < targetRoom.doors.length; di2++) {
+          var doorRectY = targetRoom.doors[di2];
+          if (darkSpaceCollision_circleWithBox(futureY, doorRectY)) {
+            collidesWithDoorY = true;
+            break;
+          }
+        }
+
+        if (!collidesWithDoorY) {
+          blockY = true;
+        }
       }
     }
 
