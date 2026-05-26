@@ -270,6 +270,14 @@ Why this step matters:
 - It prepares room-specific enemy behavior and transitions.
 - It keeps the room system organized before we add the next feature.
 
+Step 40: Enemy Updates Scoped to Active Room
+We changed `updateEnemyUnits()` so only enemies whose `currentRoomIndex` matches `single_global_state_object.activeRoomIndex` are processed each frame. Enemies in other rooms are left idle until the player enters their room.
+
+Why this step matters:
+- Keeps enemies confined to their rooms
+- Reduces unnecessary CPU work by only updating local enemies.
+- Prepares for room-based difficulty scaling and transitions.
+
 
 
 

@@ -892,10 +892,18 @@ document.addEventListener("keyup", function (event) {
 function updateEnemyUnits() {
   var currentBots = single_global_state_object.enemies;
 
+  // Only update enemies that belong to the currently active room.
+  var activeRoomIndex = single_global_state_object.activeRoomIndex;
+
   for (var i = 0; i < currentBots.length; i++) {
     var bot = currentBots[i];
 
     if (bot.state === BOT_STATE_DEATH) {
+      continue;
+    }
+
+    // Skip any bots that are not in the player's active room.
+    if (bot.currentRoomIndex !== activeRoomIndex) {
       continue;
     }
 
