@@ -346,7 +346,7 @@ function mainGameLoop() {
   //if you hold down W and D at the exact same time, the engine will process both blocks and move you diagonally
 
   //detecting keyboard clicks
-  var speed = 5;
+  var speed = 3;
   var radius = 10;
 
   var next_x = player_position_x;
@@ -384,11 +384,18 @@ function mainGameLoop() {
   var blockX = false;
   var blockY = false;
 
-  for (var r = 0; r < sectorRooms.length; r++) {
-    var targetRoom = sectorRooms[r];
+  // Use only the active room's walls for collision if available
+  var roomsToCheck = [];
+  if (single_global_state_object.activeRoom) {
+    roomsToCheck.push(single_global_state_object.activeRoom);
+  } else {
+    roomsToCheck = sectorRooms; // fallback: check all rooms
+  }
 
-    // Only the wall strips should block movement.
-    // The door gap is left out of these collisions
+  for (var r = 0; r < roomsToCheck.length; r++) {
+    var targetRoom = roomsToCheck[r];
+
+    // Only the wall strips should block movement. The door gap is left out of these collisions.
 
     for (var w = 0; w < targetRoom.collisionWalls.length; w++) {
       var wallBox = targetRoom.collisionWalls[w];
