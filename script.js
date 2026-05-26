@@ -234,6 +234,22 @@ function buildRoomCollisionWalls(roomX, roomY, roomWidth, roomHeight, door) {
   return walls;
 }
 
+function findPlayerCurrentRoomIndex(pointX, pointY) {
+  for (var i = 0; i < sectorRooms.length; i++) {
+    var room = sectorRooms[i];
+
+    if (darkSpacePoint_inRect(pointX, pointY, room)) {
+      return i;
+    }
+
+    if (darkSpacePoint_inAnyDoor(pointX, pointY, room)) {
+      return i;
+    }
+  }
+
+  return -1;
+}
+
 //declaring state of enemy bots
 //assigning numbers to each state so that its easy to apply checks
 
@@ -262,7 +278,14 @@ for (var row = 0; row < gridRows; row++) {
     var roomX = startX + col * (roomWidth + wallPadding);
     var roomY = startY + row * (roomHeight + wallPadding);
     var sectorNumber = row * gridColumns + col + 1;
-    var roomDoors = buildRoomDoors(roomX, roomY, roomWidth, roomHeight, row, col);
+    var roomDoors = buildRoomDoors(
+      roomX,
+      roomY,
+      roomWidth,
+      roomHeight,
+      row,
+      col,
+    );
 
     // Create the individual room entity blueprint
     var roomZone = {
@@ -292,6 +315,8 @@ const single_global_state_object = {
   enemies: [],
   bulletHead: null, // FIRST bullet node in our chain
   bulletTail: null, // LAST bullet node in our chain
+  activeRoomIndex: -1,
+  activeRoom: null,
 };
 
 // Input State Dictionary
@@ -308,6 +333,15 @@ var mouseY = 300;
 
 // GAME LOOP -  runs 60 times per sec
 function mainGameLoop() {
+  var currentRoomIndex = findPlayerCurrentRoomIndex(
+    player_position_x,
+    player_position_y,
+  );
+
+  single_global_state_object.activeRoomIndex = currentRoomIndex;
+  single_global_state_object.activeRoom =
+    currentRoomIndex >= 0 ? sectorRooms[currentRoomIndex] : null;
+
   // Because these are separate if conditions rather than linked if/else statements,
   //if you hold down W and D at the exact same time, the engine will process both blocks and move you diagonally
 

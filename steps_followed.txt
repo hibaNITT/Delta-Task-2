@@ -262,6 +262,16 @@ Why this step matters:
 - It matches the functional door collision system cleanly.
 
 
+Step 39: Active Room Detection Added
+We added a helper that checks the player's position against the room grid and stores the current room in single_global_state_object every frame. This gives the game one clear active room to use for later room-specific logic.
+
+Why this step matters:
+- It lets the game know which room the player is standing in.
+- It prepares room-specific enemy behavior and transitions.
+- It keeps the room system organized before we add the next feature.
+
+
+
 
 
 
