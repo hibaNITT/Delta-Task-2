@@ -852,6 +852,29 @@ function spawnEnemyBullet(bot, targetX, targetY) {
   });
 }
 
+function advanceBulletWithWallChecks(bullet) {
+  var travelDistance = Math.sqrt(bullet.vx * bullet.vx + bullet.vy * bullet.vy);
+
+  if (travelDistance === 0) {
+    return;
+  }
+
+  var stepCount = Math.max(1, Math.ceil(travelDistance));
+
+  for (var step = 0; step < stepCount; step++) {
+    var currentSpeed = Math.sqrt(bullet.vx * bullet.vx + bullet.vy * bullet.vy);
+
+    if (currentSpeed === 0) {
+      break;
+    }
+
+    bullet.x += bullet.vx / currentSpeed;
+    bullet.y += bullet.vy / currentSpeed;
+
+    reflectBulletFromWalls(bullet);
+  }
+}
+
 // implementing a common collition property for both enemy and player bullets
 function reflectBulletFromWalls(bullet) {
   for (var r = 0; r < sectorRooms.length; r++) {
@@ -1051,9 +1074,9 @@ try {
         bot.type = "roamer";
         bot.color = "#002b66";
       }
-        // Roamer (chase-capable) bots have extended immunity/health
-        bot.maxHealth = 5;
-        bot.health = 5;
+      // Roamer (chase-capable) bots have extended immunity/health
+      bot.maxHealth = 5;
+      bot.health = 5;
     }
   }
 } catch (e) {
@@ -1224,6 +1247,115 @@ function darkSpaceCollision_circleWithBox(circle, box) {
 
   // If every single shadow overlapped perfectly, we have a confirmed collision
   return true;
+}
+
+// to prevent gun penetrations
+
+function getCollisionRoomsForWallChecks() {
+  if (single_global_state_object.activeRoom) {
+    return [single_global_state_object.activeRoom];
+  }
+
+  return sectorRooms;
+}
+
+function darkSpaceRaycast_box(originX, originY, directionX, directionY, box) {
+  var epsilon = 0.000001;
+  var minT = 0;
+  var maxT = Infinity;
+
+  if (Math.abs(directionX) < epsilon) {
+    if (originX < box.x || originX > box.x + box.width) {
+      return null;
+    }
+  } else {
+    var tx1 = (box.x - originX) / directionX;
+    var tx2 = (box.x + box.width - originX) / directionX;
+    minT = Math.max(minT, Math.min(tx1, tx2));
+    maxT = Math.min(maxT, Math.max(tx1, tx2));
+  }
+
+  if (Math.abs(directionY) < epsilon) {
+    if (originY < box.y || originY > box.y + box.height) {
+      return null;
+    }
+  } else {
+    var ty1 = (box.y - originY) / directionY;
+    var ty2 = (box.y + box.height - originY) / directionY;
+    minT = Math.max(minT, Math.min(ty1, ty2));
+    maxT = Math.min(maxT, Math.max(ty1, ty2));
+  }
+
+  if (maxT < minT || maxT < 0) {
+    return null;
+  }
+
+  return Math.max(0, minT);
+}
+
+function darkSpaceRaycast_wallRooms(
+  originX,
+  originY,
+  directionX,
+  directionY,
+  maxDistance,
+) {
+  var roomsToCheck = getCollisionRoomsForWallChecks();
+  var closestHit = maxDistance;
+  var foundHit = false;
+
+  for (var r = 0; r < roomsToCheck.length; r++) {
+    var targetRoom = roomsToCheck[r];
+
+    for (var w = 0; w < targetRoom.collisionWalls.length; w++) {
+      var wallBox = targetRoom.collisionWalls[w];
+      var hitDistance = darkSpaceRaycast_box(
+        originX,
+        originY,
+        directionX,
+        directionY,
+        wallBox,
+      );
+
+      if (
+        hitDistance !== null &&
+        hitDistance <= closestHit &&
+        hitDistance <= maxDistance
+      ) {
+        closestHit = hitDistance;
+        foundHit = true;
+      }
+    }
+  }
+
+  return {
+    hit: foundHit,
+    distance: closestHit,
+  };
+}
+
+function getClampedGunPoint(originX, originY, angle, maxDistance, padding) {
+  var directionX = Math.cos(angle);
+  var directionY = Math.sin(angle);
+  var wallHit = darkSpaceRaycast_wallRooms(
+    originX,
+    originY,
+    directionX,
+    directionY,
+    maxDistance,
+  );
+  var cappedDistance = maxDistance;
+
+  if (wallHit.hit) {
+    cappedDistance = Math.max(0, wallHit.distance - padding);
+  }
+
+  return {
+    x: originX + directionX * cappedDistance,
+    y: originY + directionY * cappedDistance,
+    distance: cappedDistance,
+    blockedByWall: wallHit.hit,
+  };
 }
 
 //window is a built-in, ultimate master object created automatically.
@@ -1455,10 +1587,7 @@ function updateEnemyBullets() {
   ) {
     var bullet = single_global_state_object.enemyBullets[i];
 
-    bullet.x += bullet.vx;
-    bullet.y += bullet.vy;
-
-    reflectBulletFromWalls(bullet);
+    advanceBulletWithWallChecks(bullet);
 
     var playerDistanceX = bullet.x - player_position_x;
     var playerDistanceY = bullet.y - player_position_y;
