@@ -1027,6 +1027,8 @@ function spawnEnemiesInRooms() {
       alertTimer: 0,
       attackCooldownTimer: 0,
       facingAngle: 0,
+      type: "normal",
+      color: "#33ff33",
     };
 
     // Push the newly created bot into our master state dictionary array
@@ -1036,6 +1038,27 @@ function spawnEnemiesInRooms() {
 
 // Call the function immediately to populate the map when the script runs
 spawnEnemiesInRooms();
+
+// Ensure specific rooms have the roamer property: rooms 1, 7, 16 . indices 0,6,15
+try {
+  var roamerRooms = [0, 6, 15];
+  for (var r = 0; r < single_global_state_object.enemies.length; r++) {
+    var bot = single_global_state_object.enemies[r];
+    if (roamerRooms.indexOf(bot.currentRoomIndex) !== -1) {
+      if (typeof makeRoamer === "function") {
+        makeRoamer(bot);
+      } else {
+        bot.type = "roamer";
+        bot.color = "#002b66";
+      }
+        // Roamer (chase-capable) bots have extended immunity/health
+        bot.maxHealth = 5;
+        bot.health = 5;
+    }
+  }
+} catch (e) {
+  // ignore
+}
 
 function enemyCanSeePlayer(bot) {
   var dx = player_position_x - bot.x;
@@ -1244,8 +1267,8 @@ function updateEnemyUnits() {
       continue;
     }
 
-    // Skip any bots that are not in the player's active room.
-    if (bot.currentRoomIndex !== activeRoomIndex) {
+    // Skip any bots that are not in the player's active room, except roamers
+    if (bot.type !== "roamer" && bot.currentRoomIndex !== activeRoomIndex) {
       continue;
     }
 
@@ -1315,28 +1338,47 @@ function updateEnemyUnits() {
         distanceToPlayer = 1;
       }
 
-      if (distanceToPlayer > enemyAttackRange) {
-        bot.vx = (distanceToPlayerX / distanceToPlayer) * enemyChaseSpeed;
-        bot.vy = (distanceToPlayerY / distanceToPlayer) * enemyChaseSpeed;
-        bot.x += bot.vx;
-        bot.y += bot.vy;
-        bot.facingAngle = Math.atan2(bot.vy, bot.vx);
-      } else {
-        bot.vx = 0;
-        bot.vy = 0;
-        bot.facingAngle = Math.atan2(distanceToPlayerY, distanceToPlayerX);
-        bot.state = BOT_STATE_ATTACK;
-      }
+      // Roamers use special chase logic that allows them to leave their room and
+      // wander around the player. Other bots follow the straight chase path.
+      if (bot.type === "roamer" && typeof updateRoamerChase === "function") {
+        // let helper move the bot toward a roaming target near the player
+        updateRoamerChase(bot);
 
-      // Keep chasing enemies inside their assigned room boundaries.
-      bot.x = Math.max(
-        room.x + bot.radius,
-        Math.min(bot.x, room.x + room.width - bot.radius),
-      );
-      bot.y = Math.max(
-        room.y + bot.radius,
-        Math.min(bot.y, room.y + room.height - bot.radius),
-      );
+        // if close enough to the player, switch to attack
+        var toPlayerX = player_position_x - bot.x;
+        var toPlayerY = player_position_y - bot.y;
+        var toPlayerDist =
+          Math.sqrt(toPlayerX * toPlayerX + toPlayerY * toPlayerY) || 1;
+        if (toPlayerDist <= enemyAttackRange) {
+          bot.vx = 0;
+          bot.vy = 0;
+          bot.facingAngle = Math.atan2(toPlayerY, toPlayerX);
+          bot.state = BOT_STATE_ATTACK;
+        }
+      } else {
+        if (distanceToPlayer > enemyAttackRange) {
+          bot.vx = (distanceToPlayerX / distanceToPlayer) * enemyChaseSpeed;
+          bot.vy = (distanceToPlayerY / distanceToPlayer) * enemyChaseSpeed;
+          bot.x += bot.vx;
+          bot.y += bot.vy;
+          bot.facingAngle = Math.atan2(bot.vy, bot.vx);
+        } else {
+          bot.vx = 0;
+          bot.vy = 0;
+          bot.facingAngle = Math.atan2(distanceToPlayerY, distanceToPlayerX);
+          bot.state = BOT_STATE_ATTACK;
+        }
+
+        // Keep chasing enemies inside their assigned room boundaries.
+        bot.x = Math.max(
+          room.x + bot.radius,
+          Math.min(bot.x, room.x + room.width - bot.radius),
+        );
+        bot.y = Math.max(
+          room.y + bot.radius,
+          Math.min(bot.y, room.y + room.height - bot.radius),
+        );
+      }
     } else if (bot.state === BOT_STATE_ATTACK) {
       bot.vx = 0;
       bot.vy = 0;
@@ -1355,6 +1397,8 @@ function updateEnemyUnits() {
         bot.attackCooldownTimer = enemyAttackCooldownFrames;
       }
     }
+    // Update which room the bot is currently inside (or -1 if none)
+    bot.currentRoomIndex = findPlayerCurrentRoomIndex(bot.x, bot.y);
   }
 }
 
@@ -1375,15 +1419,15 @@ function drawEnemyUnits() {
     ctx.beginPath();
 
     //bot body
-    ctx.arc(bot.x, bot.y, 10, 0, Math.PI * 2);
+    ctx.arc(bot.x, bot.y, bot.radius + 2, 0, Math.PI * 2);
 
-    ctx.fillStyle = "#FF3333";
+    ctx.fillStyle = bot.color || "#FF3333";
     ctx.fill();
     ctx.closePath();
 
-    var barWidth = 24;
     var barHeight = 4;
-    var segmentWidth = barWidth / 3;
+    var barWidth = Math.max(24, (bot.maxHealth || 3) * 8);
+    var segmentWidth = barWidth / (bot.maxHealth || 3);
     var barX = bot.x - barWidth / 2;
     var barY = bot.y - bot.radius - 12;
 
@@ -1391,7 +1435,7 @@ function drawEnemyUnits() {
     ctx.lineWidth = 1;
     ctx.strokeRect(barX, barY, barWidth, barHeight);
 
-    for (var segment = 0; segment < 3; segment++) {
+    for (var segment = 0; segment < (bot.maxHealth || 3); segment++) {
       ctx.fillStyle = segment < bot.health ? "#33ff33" : "#143014";
       ctx.fillRect(
         barX + segment * segmentWidth + 1,
