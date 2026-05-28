@@ -1725,8 +1725,7 @@ window.addEventListener("mousemove", function (event) {
   mouseY = event.clientY - canvasBounds.top;
 });
 
-// Hardware Listener for gun shooting - Mouse Clicks
-canvas.addEventListener("mousedown", function (event) {
+function handleGunFire(event) {
   if (window.soundManager) {
     window.soundManager.unlock();
   }
@@ -1737,24 +1736,27 @@ canvas.addEventListener("mousedown", function (event) {
     return;
   }
 
+  var canvasBounds = canvas.getBoundingClientRect();
+  var clickX = event.clientX - canvasBounds.left;
+  var clickY = event.clientY - canvasBounds.top;
+
+  if (
+    clickX < 0 ||
+    clickX > canvasBounds.width ||
+    clickY < 0 ||
+    clickY > canvasBounds.height
+  ) {
+    return;
+  }
+
   // Only fire if the player clicks the primary left mouse button (button 0)
-  if (event.button === 0) {
+  if (event.button === 0 || event.pointerType === "touch") {
     event.preventDefault();
 
     // Use the actual click coordinates (not the last mousemove) so bullets match click angle
-    var canvasBounds = canvas.getBoundingClientRect();
-    var clickX = event.clientX - canvasBounds.left;
-    var clickY = event.clientY - canvasBounds.top;
-
-    // Recalculate the current angle from the player to the click position
     var distanceX = clickX - player_position_x;
     var distanceY = clickY - player_position_y;
     var currentAngle = Math.atan2(distanceY, distanceX);
-
-    // Find the exact tip of the gun where the bullet should appear
-    var gunLength = 25;
-    var bulletStartX = player_position_x + Math.cos(currentAngle) * gunLength;
-    var bulletStartY = player_position_y + Math.sin(currentAngle) * gunLength;
 
     // speed factor
     var bulletSpeed = 7;
@@ -1765,8 +1767,8 @@ canvas.addEventListener("mousedown", function (event) {
 
     // Assemble the complete projectile property package...this is created for every click
     var newBullet = {
-      x: bulletStartX,
-      y: bulletStartY,
+      x: player_position_x,
+      y: player_position_y,
       vx: velocityX,
       vy: velocityY,
       radius: 4,
@@ -1779,7 +1781,14 @@ canvas.addEventListener("mousedown", function (event) {
       window.soundManager.play("shoot");
     }
   }
-});
+}
+
+// Hardware Listener for gun shooting - Mouse / Pointer Clicks
+if (window.PointerEvent) {
+  document.addEventListener("pointerdown", handleGunFire);
+} else {
+  canvas.addEventListener("mousedown", handleGunFire);
+}
 
 pauseToggleButton.addEventListener("click", function () {
   setGamePaused(!gamePaused);
