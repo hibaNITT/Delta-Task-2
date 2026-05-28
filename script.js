@@ -4,6 +4,7 @@ const hudHealth = document.getElementById("hudHealth");
 const hudScore = document.getElementById("hudScore");
 const hudTime = document.getElementById("hudTime");
 const pauseToggleButton = document.getElementById("pauseToggleButton");
+const restartButton = document.getElementById("restartButton");
 
 //This creates our drawing context (ctx) object.
 // This is what we will use to draw on the canvas board..2d
@@ -700,6 +701,27 @@ function updateHUD() {
   hudTime.textContent = "Time: " + elapsedSeconds + "s";
 }
 
+//reset game state
+function resetGame() {
+  player_position_x = 15;
+  player_position_y = canvas.height / 2;
+  player_health = player_max_health;
+  gameScore = 0;
+  gameStartTime = Date.now();
+
+  keysPressed.w = false;
+  keysPressed.a = false;
+  keysPressed.s = false;
+  keysPressed.d = false;
+
+  single_global_state_object.bulletHead = null;
+  single_global_state_object.bulletTail = null;
+
+  spawnEnemiesInRooms();
+  setGamePaused(false);
+  updateHUD();
+}
+
 //pause button
 
 function setGamePaused(nextPausedState) {
@@ -1167,6 +1189,10 @@ canvas.addEventListener("mousedown", function (event) {
 
 pauseToggleButton.addEventListener("click", function () {
   setGamePaused(!gamePaused);
+});
+
+restartButton.addEventListener("click", function () {
+  resetGame();
 });
 
 setGamePaused(false);
