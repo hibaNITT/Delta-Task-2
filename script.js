@@ -3,6 +3,7 @@ const canvas = document.getElementById("gameCanvas");
 const hudHealth = document.getElementById("hudHealth");
 const hudScore = document.getElementById("hudScore");
 const hudTime = document.getElementById("hudTime");
+const pauseToggleButton = document.getElementById("pauseToggleButton");
 
 //This creates our drawing context (ctx) object.
 // This is what we will use to draw on the canvas board..2d
@@ -15,6 +16,7 @@ var player_max_health = 10;
 var player_health = player_max_health;
 var gameScore = 0;
 var gameStartTime = Date.now();
+var gamePaused = false;
 
 //CREATING ROOMS DYNAMICALLY
 
@@ -341,6 +343,13 @@ function mainGameLoop() {
   single_global_state_object.activeRoomIndex = currentRoomIndex;
   single_global_state_object.activeRoom =
     currentRoomIndex >= 0 ? sectorRooms[currentRoomIndex] : null;
+
+  if (gamePaused) {
+    drawPauseOverlay();
+    updateHUD();
+    requestAnimationFrame(mainGameLoop);
+    return;
+  }
 
   // Because these are separate if conditions rather than linked if/else statements,
   //if you hold down W and D at the exact same time, the engine will process both blocks and move you diagonally
@@ -691,6 +700,40 @@ function updateHUD() {
   hudTime.textContent = "Time: " + elapsedSeconds + "s";
 }
 
+//pause button
+
+function setGamePaused(nextPausedState) {
+  gamePaused = nextPausedState;
+
+  if (gamePaused) {
+    keysPressed.w = false;
+    keysPressed.a = false;
+    keysPressed.s = false;
+    keysPressed.d = false;
+  }
+
+  //toggle button
+  pauseToggleButton.textContent = gamePaused ? "Resume" : "Pause";
+}
+
+//disabling the game ui
+function drawPauseOverlay() {
+  ctx.fillStyle = "rgba(0, 0, 0, 0.55)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 28px monospace";
+  ctx.textAlign = "center";
+  ctx.fillText("Paused", canvas.width / 2, canvas.height / 2);
+  ctx.font = "14px monospace";
+  ctx.fillText(
+    "Press Resume to continue",
+    canvas.width / 2,
+    canvas.height / 2 + 28,
+  );
+  ctx.textAlign = "start";
+}
+
 function appendBulletNode(bulletData) {
   // linked list node package
   var newNode = {
@@ -908,6 +951,10 @@ function darkSpaceCollision_circleWithBox(circle, box) {
 document.addEventListener("keydown", function (event) {
   var keyName = event.key.toLowerCase(); //to avoid capslock
   if (keyName in keysPressed) {
+    if (gamePaused) {
+      event.preventDefault();
+      return;
+    }
     keysPressed[keyName] = true;
   }
 });
@@ -1072,6 +1119,12 @@ window.addEventListener("mousemove", function (event) {
 
 // Hardware Listener for gun shooting - Mouse Clicks
 canvas.addEventListener("mousedown", function (event) {
+  //to disable clicks
+  if (gamePaused) {
+    event.preventDefault();
+    return;
+  }
+
   // Only fire if the player clicks the primary left mouse button (button 0)
   if (event.button === 0) {
     event.preventDefault();
@@ -1111,6 +1164,12 @@ canvas.addEventListener("mousedown", function (event) {
     appendBulletNode(newBullet);
   }
 });
+
+pauseToggleButton.addEventListener("click", function () {
+  setGamePaused(!gamePaused);
+});
+
+setGamePaused(false);
 
 // Manually start the loop for the very first time
 mainGameLoop();
