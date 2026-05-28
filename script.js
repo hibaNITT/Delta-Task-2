@@ -649,43 +649,45 @@ function reflectBulletFromWalls(bullet) {
   for (var r = 0; r < sectorRooms.length; r++) {
     var activeRoom = sectorRooms[r];
 
-    if (darkSpaceCollision_circleWithBox(bullet, activeRoom)) {
-      var xAxis = { x: 1, y: 0 };
-      var yAxis = { x: 0, y: 1 };
+    for (var w = 0; w < activeRoom.collisionWalls.length; w++) {
+      var wallBox = activeRoom.collisionWalls[w];
 
-      var bulletSpanX = darkSpaceProject_circle(bullet, xAxis);
-      var roomSpanX = darkSpaceProject_box(activeRoom, xAxis);
-      var bulletSpanY = darkSpaceProject_circle(bullet, yAxis);
-      var roomSpanY = darkSpaceProject_box(activeRoom, yAxis);
+      if (darkSpaceCollision_circleWithBox(bullet, wallBox)) {
+        var xAxis = { x: 1, y: 0 };
+        var yAxis = { x: 0, y: 1 };
 
-      var overlapXamt =
-        Math.min(bulletSpanX.max, roomSpanX.max) -
-        Math.max(bulletSpanX.min, roomSpanX.min);
-      var overlapYamt =
-        Math.min(bulletSpanY.max, roomSpanY.max) -
-        Math.max(bulletSpanY.min, roomSpanY.min);
+        var bulletSpanX = darkSpaceProject_circle(bullet, xAxis);
+        var wallSpanX = darkSpaceProject_box(wallBox, xAxis);
+        var bulletSpanY = darkSpaceProject_circle(bullet, yAxis);
+        var wallSpanY = darkSpaceProject_box(wallBox, yAxis);
 
-      if (overlapXamt < overlapYamt) {
-        bullet.vx = -bullet.vx;
+        var overlapXamt =
+          Math.min(bulletSpanX.max, wallSpanX.max) -
+          Math.max(bulletSpanX.min, wallSpanX.min);
+        var overlapYamt =
+          Math.min(bulletSpanY.max, wallSpanY.max) -
+          Math.max(bulletSpanY.min, wallSpanY.min);
 
-        if (bullet.x < activeRoom.x + activeRoom.width / 2) {
-          bullet.x = activeRoom.x - (bullet.radius || 4) - 0.1;
+        if (overlapXamt < overlapYamt) {
+          bullet.vx = -bullet.vx;
+
+          if (bullet.x < wallBox.x + wallBox.width / 2) {
+            bullet.x = wallBox.x - (bullet.radius || 4) - 0.1;
+          } else {
+            bullet.x = wallBox.x + wallBox.width + (bullet.radius || 4) + 0.1;
+          }
         } else {
-          bullet.x =
-            activeRoom.x + activeRoom.width + (bullet.radius || 4) + 0.1;
-        }
-      } else {
-        bullet.vy = -bullet.vy;
+          bullet.vy = -bullet.vy;
 
-        if (bullet.y < activeRoom.y + activeRoom.height / 2) {
-          bullet.y = activeRoom.y - (bullet.radius || 4) - 0.1;
-        } else {
-          bullet.y =
-            activeRoom.y + activeRoom.height + (bullet.radius || 4) + 0.1;
+          if (bullet.y < wallBox.y + wallBox.height / 2) {
+            bullet.y = wallBox.y - (bullet.radius || 4) - 0.1;
+          } else {
+            bullet.y = wallBox.y + wallBox.height + (bullet.radius || 4) + 0.1;
+          }
         }
+
+        return true;
       }
-
-      return true;
     }
   }
 
