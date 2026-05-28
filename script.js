@@ -22,6 +22,10 @@ var gameDurationSeconds = 300;
 var gamePaused = false;
 var gameOver = false;
 var gameWon = false;
+var gameOverSoundPlayed = false;
+var gameWonSoundPlayed = false;
+
+var previousRoomIndex = null;
 
 //CREATING ROOMS DYNAMICALLY
 
@@ -347,6 +351,18 @@ function mainGameLoop() {
     player_position_y,
   );
 
+  //for room transition sound
+
+  if (
+    previousRoomIndex !== null &&
+    currentRoomIndex !== previousRoomIndex &&
+    window.soundManager
+  ) {
+    window.soundManager.play("roomTransition");
+  }
+
+  previousRoomIndex = currentRoomIndex;
+
   single_global_state_object.activeRoomIndex = currentRoomIndex;
   single_global_state_object.activeRoom =
     currentRoomIndex >= 0 ? sectorRooms[currentRoomIndex] : null;
@@ -357,10 +373,18 @@ function mainGameLoop() {
   //game over logic
   if (player_health <= 0) {
     gameOver = true;
+    if (!gameOverSoundPlayed && window.soundManager) {
+      window.soundManager.play("gameOver");
+      gameOverSoundPlayed = true;
+    }
   }
 
   if (remainingSeconds <= 0) {
     gameOver = true;
+    if (!gameOverSoundPlayed && window.soundManager) {
+      window.soundManager.play("gameOver");
+      gameOverSoundPlayed = true;
+    }
   }
 
   if (!gameOver && !gameWon) {
@@ -382,6 +406,10 @@ function mainGameLoop() {
       single_global_state_object.enemies.length > 0
     ) {
       gameWon = true;
+      if (!gameWonSoundPlayed && window.soundManager) {
+        window.soundManager.play("gameWin");
+        gameWonSoundPlayed = true;
+      }
     }
   }
 
@@ -720,6 +748,9 @@ function resetGame() {
   gameStartTime = Date.now();
   gameOver = false;
   gameWon = false;
+  gameOverSoundPlayed = false;
+  gameWonSoundPlayed = false;
+  previousRoomIndex = null;
 
   keysPressed.w = false;
   keysPressed.a = false;
@@ -1071,6 +1102,10 @@ function darkSpaceCollision_circleWithBox(circle, box) {
 
 // Event Listener for When a key is pressed
 document.addEventListener("keydown", function (event) {
+  if (window.soundManager) {
+    window.soundManager.unlock();
+  }
+
   var keyName = event.key.toLowerCase(); //to avoid capslock
   if (keyName in keysPressed) {
     if (gamePaused || gameOver || gameWon) {
@@ -1327,6 +1362,10 @@ window.addEventListener("mousemove", function (event) {
 
 // Hardware Listener for gun shooting - Mouse Clicks
 canvas.addEventListener("mousedown", function (event) {
+  if (window.soundManager) {
+    window.soundManager.unlock();
+  }
+
   //to disable clicks
   if (gamePaused || gameOver || gameWon) {
     event.preventDefault();
@@ -1370,6 +1409,10 @@ canvas.addEventListener("mousedown", function (event) {
 
     // Inject the bullet package directly into our linked list
     appendBulletNode(newBullet);
+
+    if (window.soundManager) {
+      window.soundManager.play("shoot");
+    }
   }
 });
 

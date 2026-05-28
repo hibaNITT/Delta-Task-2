@@ -12,7 +12,7 @@ body {
   top: 12px;
   left: 12px;
   z-index: 10;
-  pointer-events: auto;
+  pointer-events: none;
   padding: 10px 12px;
   border: 2px solid #00d2ff;
   background: rgba(0, 0, 0, 0.7);
@@ -26,6 +26,8 @@ body {
   display: flex;
   gap: 8px;
   margin-top: 8px;
+  /*This Allows clicks, hovers, and other events to be detected on the element. */
+  pointer-events: auto;
 }
 
 #hudControls button {
@@ -35,6 +37,7 @@ body {
   padding: 6px 10px;
   font: inherit;
   cursor: pointer;
+  pointer-events: auto;
 }
 
 canvas {
