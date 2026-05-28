@@ -877,20 +877,34 @@ function reflectBulletFromWalls(bullet) {
           Math.max(bulletSpanY.min, wallSpanY.min);
 
         if (overlapXamt < overlapYamt) {
-          bullet.vx = -bullet.vx;
+          // Vertical face hit — reflect across vertical normal
+          var nx = bullet.x - (wallBox.x + wallBox.width / 2);
+          var n = { x: Math.sign(nx) || 1, y: 0 };
 
-          if (bullet.x < wallBox.x + wallBox.width / 2) {
-            bullet.x = wallBox.x - (bullet.radius || 4) - 0.1;
+          // reflect velocity: v' = v - 2*(v·n)*n
+          var dot = bullet.vx * n.x + bullet.vy * n.y;
+          bullet.vx = bullet.vx - 2 * dot * n.x;
+          bullet.vy = bullet.vy - 2 * dot * n.y;
+
+          // nudge bullet outside wall to prevent sticking
+          if (n.x > 0) {
+            bullet.x = wallBox.x + wallBox.width + (bullet.radius || 4) + 0.2;
           } else {
-            bullet.x = wallBox.x + wallBox.width + (bullet.radius || 4) + 0.1;
+            bullet.x = wallBox.x - (bullet.radius || 4) - 0.2;
           }
         } else {
-          bullet.vy = -bullet.vy;
+          // Horizontal face hit — reflect across horizontal normal
+          var ny = bullet.y - (wallBox.y + wallBox.height / 2);
+          var n = { x: 0, y: Math.sign(ny) || 1 };
 
-          if (bullet.y < wallBox.y + wallBox.height / 2) {
-            bullet.y = wallBox.y - (bullet.radius || 4) - 0.1;
+          var dotY = bullet.vx * n.x + bullet.vy * n.y;
+          bullet.vx = bullet.vx - 2 * dotY * n.x;
+          bullet.vy = bullet.vy - 2 * dotY * n.y;
+
+          if (n.y > 0) {
+            bullet.y = wallBox.y + wallBox.height + (bullet.radius || 4) + 0.2;
           } else {
-            bullet.y = wallBox.y + wallBox.height + (bullet.radius || 4) + 0.1;
+            bullet.y = wallBox.y - (bullet.radius || 4) - 0.2;
           }
         }
 
