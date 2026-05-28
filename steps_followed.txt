@@ -258,6 +258,16 @@ Step 46: Main Game Loop and Shared Frame State Refactor
 We renamed the core loop to main_game_loop() and added a per-frame snapshot inside single_global_state_object for the player and frame status. 
 This gives the game one cleaner place to store the active room, player position, health, score, pause state, and win/lose state each frame.
 
+Step 47: Beginner Visibility Cone 
+Added a beginner-friendly visibility cone that reveals the original board only inside a 120° wedge centered on the player's aim. The implementation:
+- Adds `visibilityRadius` and `visibilityFovDeg` settings to tune radius and FOV.
+- Draws a full black overlay each frame, then clips a cone-shaped region and redraws the scene (rooms, enemies, bullets, and player) inside that clipped area so the visible region matches the original board graphics.
+- Ensures the player is redrawn on top so it remains visible inside the cone.
+
+Notes:
+- The cone currently does not perform wall occlusion (it sees through walls) as requested for a beginner feel. It can be upgraded later to a raycast-based occluding cone.
+- The cone is rendered each frame after the main scene draw to keep the rest of the rendering code simple and beginner-friendly.
+
 
 
 

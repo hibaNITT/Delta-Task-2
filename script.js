@@ -27,6 +27,10 @@ var gameWonSoundPlayed = false;
 
 var previousRoomIndex = null;
 
+// Visibility settings
+var visibilityRadius = 120; // how far the player can see
+var visibilityFovDeg = 100;
+
 //CREATING ROOMS DYNAMICALLY
 
 // Instantiating our 20-Room Map
@@ -751,7 +755,37 @@ function main_game_loop() {
 
   //It tells the browser window to call main_game_loop again right before the monitor refreshes next.
   //This creates an elegant, highly optimized, non-stop recursive animation loop.
+  // Render the visibility cone overlay so everything outside the cone is black.
+  renderVisibilityCone();
+  // Redraw player on top so the player is always visible inside the cone
+  drawPlayerTop();
   requestAnimationFrame(main_game_loop);
+}
+
+// Draw player on top of overlays
+function drawPlayerTop() {
+  var distanceX = mouseX - player_position_x;
+  var distanceY = mouseY - player_position_y;
+  var angle = Math.atan2(distanceY, distanceX);
+
+  var gunLength = 15;
+  var gunX = player_position_x + Math.cos(angle) * gunLength;
+  var gunY = player_position_y + Math.sin(angle) * gunLength;
+
+  ctx.strokeStyle = "#ffff33";
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.moveTo(player_position_x, player_position_y);
+  ctx.lineTo(gunX, gunY);
+  ctx.stroke();
+
+  ctx.fillStyle = "#ffff33";
+  ctx.strokeStyle = "#000000";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(player_position_x, player_position_y, 10, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
 }
 
 function updateHUD() {
@@ -1378,6 +1412,91 @@ function drawEnemyBullets() {
     ctx.fill();
     ctx.closePath();
   }
+}
+
+// Beginner-friendly visibility cone renderer
+function renderVisibilityCone() {
+  // compute facing angle from player to mouse
+  var ang = Math.atan2(mouseY - player_position_y, mouseX - player_position_x);
+  var half = (visibilityFovDeg * Math.PI) / 180 / 2;
+  var r = visibilityRadius;
+
+  // Cover entire scene with black
+  ctx.fillStyle = "rgba(0,0,0,1)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Clip a cone region and redraw the scene inside it so the original board shows through.
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(player_position_x, player_position_y);
+  ctx.arc(
+    player_position_x,
+    player_position_y,
+    r,
+    ang - half,
+    ang + half,
+    false,
+  );
+  ctx.closePath();
+  ctx.clip();
+
+  // redraw rooms, enemies, bullets, and player inside the clipped cone
+  drawSceneInsideCone();
+
+  ctx.restore();
+}
+
+// Redraw the original scene elements (rooms, enemies, bullets, player)
+function drawSceneInsideCone() {
+  // redraw canvas background so the visible cone matches the original board
+  ctx.fillStyle = "#051a05"; // same as CSS canvas background
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // draw rooms
+  for (var r = 0; r < sectorRooms.length; r++) {
+    var room = sectorRooms[r];
+
+    // Paint the interior floors
+    ctx.fillStyle = "rgba(12, 24, 18, 0.85)";
+    ctx.fillRect(room.x, room.y, room.width, room.height);
+
+    // Draw the solid outer perimeter walls
+    ctx.strokeStyle = "#00d2ff";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(room.x, room.y, room.width, room.height);
+
+    // Cut openings in the wall outline so the room has visible doors.
+    ctx.fillStyle = "#051a05";
+    for (var d = 0; d < room.doors.length; d++) {
+      var door = room.doors[d];
+      ctx.fillRect(door.x, door.y, door.width, door.height);
+    }
+
+    // Render the localized sector designation string in the corner
+    ctx.fillStyle = "#00d2ff";
+    ctx.font = "9px monospace";
+    ctx.fillText(room.name, room.x + 6, room.y + 14);
+  }
+
+  // draw enemies and bullets (use existing helpers)
+  drawEnemyUnits();
+  drawEnemyBullets();
+
+  // redraw bullets from linked list
+  var currentBullet = single_global_state_object.bulletHead;
+  while (currentBullet !== null) {
+    ctx.fillStyle = "#ff3333";
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(currentBullet.x, currentBullet.y, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    currentBullet = currentBullet.next;
+  }
+
+  // draw player (gun + circle)
+  drawPlayerTop();
 }
 
 // Hardware Listener for Mouse Tracking
