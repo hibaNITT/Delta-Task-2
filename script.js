@@ -277,6 +277,10 @@ var BOT_STATE_DEATH = 4;
 var enemyPatrolSpeed = 1.2;
 var enemyPatrolWaitFrames = 45;
 var enemyDetectionRange = 50;
+
+// enemy vision cone
+var enemyVisionRange = 90;
+var enemyVisionConeDeg = 70;
 var enemyAlertDuration = 300;
 var enemyChaseSpeed = 1.8;
 var enemyAttackRange = 35;
@@ -1008,6 +1012,7 @@ function spawnEnemiesInRooms() {
       waitTimer: 0,
       alertTimer: 0,
       attackCooldownTimer: 0,
+      facingAngle: 0,
     };
 
     // Push the newly created bot into our master state dictionary array
@@ -1017,6 +1022,29 @@ function spawnEnemiesInRooms() {
 
 // Call the function immediately to populate the map when the script runs
 spawnEnemiesInRooms();
+
+function enemyCanSeePlayer(bot) {
+  var dx = player_position_x - bot.x;
+  var dy = player_position_y - bot.y;
+  var distance = Math.sqrt(dx * dx + dy * dy);
+
+  if (distance > enemyVisionRange) {
+    return false;
+  }
+
+  if (distance === 0) {
+    return true;
+  }
+
+  var angleToPlayer = Math.atan2(dy, dx);
+  var halfCone = (enemyVisionConeDeg * Math.PI) / 180 / 2;
+  var angleDiff = angleToPlayer - bot.facingAngle;
+
+  while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+  while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+
+  return Math.abs(angleDiff) <= halfCone;
+}
 
 // SAT helper functions
 
@@ -1217,10 +1245,7 @@ function updateEnemyUnits() {
         distanceToPlayerY * distanceToPlayerY,
     );
 
-    if (
-      bot.state === BOT_STATE_IDLE &&
-      distanceToPlayer <= enemyDetectionRange
-    ) {
+    if (bot.state === BOT_STATE_IDLE && enemyCanSeePlayer(bot)) {
       bot.state = BOT_STATE_ALERT;
       bot.alertTimer = enemyAlertDuration;
       bot.waitTimer = 0;
@@ -1245,6 +1270,7 @@ function updateEnemyUnits() {
           bot.vy = (dy / distanceToTarget) * enemyPatrolSpeed;
           bot.x += bot.vx;
           bot.y += bot.vy;
+          bot.facingAngle = Math.atan2(bot.vy, bot.vx);
         }
       }
 
@@ -1280,9 +1306,11 @@ function updateEnemyUnits() {
         bot.vy = (distanceToPlayerY / distanceToPlayer) * enemyChaseSpeed;
         bot.x += bot.vx;
         bot.y += bot.vy;
+        bot.facingAngle = Math.atan2(bot.vy, bot.vx);
       } else {
         bot.vx = 0;
         bot.vy = 0;
+        bot.facingAngle = Math.atan2(distanceToPlayerY, distanceToPlayerX);
         bot.state = BOT_STATE_ATTACK;
       }
 
@@ -1298,6 +1326,7 @@ function updateEnemyUnits() {
     } else if (bot.state === BOT_STATE_ATTACK) {
       bot.vx = 0;
       bot.vy = 0;
+      bot.facingAngle = Math.atan2(distanceToPlayerY, distanceToPlayerX);
 
       if (distanceToPlayer > enemyAttackRange + 12) {
         bot.state = BOT_STATE_CHASE;
