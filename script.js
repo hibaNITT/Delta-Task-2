@@ -267,7 +267,7 @@ var enemyPatrolWaitFrames = 45;
 var enemyDetectionRange = 50;
 var enemyAlertDuration = 300;
 var enemyChaseSpeed = 1.8;
-var enemyAttackRange = 28;
+var enemyAttackRange = 35;
 var enemyAttackDamage = 1;
 var enemyAttackCooldownFrames = 30;
 var enemyMaxHealth = 3;
@@ -1095,15 +1095,15 @@ function updateEnemyUnits() {
         distanceToPlayer = 1;
       }
 
-      bot.vx = (distanceToPlayerX / distanceToPlayer) * enemyChaseSpeed;
-      bot.vy = (distanceToPlayerY / distanceToPlayer) * enemyChaseSpeed;
-      bot.x += bot.vx;
-      bot.y += bot.vy;
-
-      if (distanceToPlayer <= enemyAttackRange) {
-        bot.state = BOT_STATE_ATTACK;
+      if (distanceToPlayer > enemyAttackRange) {
+        bot.vx = (distanceToPlayerX / distanceToPlayer) * enemyChaseSpeed;
+        bot.vy = (distanceToPlayerY / distanceToPlayer) * enemyChaseSpeed;
+        bot.x += bot.vx;
+        bot.y += bot.vy;
       } else {
-        bot.attackCooldownTimer = 0;
+        bot.vx = 0;
+        bot.vy = 0;
+        bot.state = BOT_STATE_ATTACK;
       }
 
       // Keep chasing enemies inside their assigned room boundaries.
