@@ -330,6 +330,20 @@ const single_global_state_object = {
   bulletTail: null, // LAST bullet node in our chain
   activeRoomIndex: -1,
   activeRoom: null,
+  player: {
+    x: player_position_x,
+    y: player_position_y,
+    health: player_health,
+    maxHealth: player_max_health,
+  },
+  frame: {
+    elapsedSeconds: 0,
+    remainingSeconds: gameDurationSeconds,
+    score: gameScore,
+    paused: gamePaused,
+    over: gameOver,
+    won: gameWon,
+  },
 };
 
 // Input State Dictionary
@@ -344,8 +358,22 @@ var keysPressed = {
 var mouseX = 400;
 var mouseY = 300;
 
-// GAME LOOP -  runs 60 times per sec
-function mainGameLoop() {
+function singleGlobalStateObject(elapsedSeconds, remainingSeconds) {
+  single_global_state_object.player.x = player_position_x;
+  single_global_state_object.player.y = player_position_y;
+  single_global_state_object.player.health = player_health;
+  single_global_state_object.player.maxHealth = player_max_health;
+
+  single_global_state_object.frame.elapsedSeconds = elapsedSeconds;
+  single_global_state_object.frame.remainingSeconds = remainingSeconds;
+  single_global_state_object.frame.score = gameScore;
+  single_global_state_object.frame.paused = gamePaused;
+  single_global_state_object.frame.over = gameOver;
+  single_global_state_object.frame.won = gameWon;
+}
+
+// GAME LOOP - runs 60 times per sec
+function main_game_loop() {
   var currentRoomIndex = findPlayerCurrentRoomIndex(
     player_position_x,
     player_position_y,
@@ -369,6 +397,7 @@ function mainGameLoop() {
 
   var elapsedSeconds = Math.floor((Date.now() - gameStartTime) / 1000);
   var remainingSeconds = gameDurationSeconds - elapsedSeconds;
+  singleGlobalStateObject(elapsedSeconds, remainingSeconds);
 
   //game over logic
   if (player_health <= 0) {
@@ -417,7 +446,8 @@ function mainGameLoop() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawEndOverlay("Game Over", "Press Restart to try again");
     updateHUD();
-    requestAnimationFrame(mainGameLoop);
+    //  to schedule a function to run before the next browser repaint
+    requestAnimationFrame(main_game_loop);
     return;
   }
 
@@ -425,14 +455,14 @@ function mainGameLoop() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawEndOverlay("Sector Cleared", "All hostile bots eliminated");
     updateHUD();
-    requestAnimationFrame(mainGameLoop);
+    requestAnimationFrame(main_game_loop);
     return;
   }
 
   if (gamePaused) {
     drawPauseOverlay();
     updateHUD();
-    requestAnimationFrame(mainGameLoop);
+    requestAnimationFrame(main_game_loop);
     return;
   }
 
@@ -721,7 +751,7 @@ function mainGameLoop() {
 
   //It tells the browser window to call main_game_loop again right before the monitor refreshes next.
   //This creates an elegant, highly optimized, non-stop recursive animation loop.
-  requestAnimationFrame(mainGameLoop);
+  requestAnimationFrame(main_game_loop);
 }
 
 function updateHUD() {
@@ -1427,4 +1457,4 @@ restartButton.addEventListener("click", function () {
 setGamePaused(false);
 
 // Manually start the loop for the very first time
-mainGameLoop();
+main_game_loop();

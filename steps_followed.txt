@@ -181,10 +181,6 @@ Once it reaches that destination, it will pause briefly, pick a new random spot,
 Step 28: Updating Patrol Movement Each Frame
 We added a small enemy update function that runs before drawing. It checks whether a bot is in its idle/patrol state, moves it toward its patrol target, pauses when it arrives, and keeps it inside its own room.
 
-Why this step matters:
-- It gives the enemies their first real movement behavior.
-- It keeps the bot logic simple for beginners, because the patrol movement is separate from the drawing code.
-- It prepares the game for the next AI states like alert, chase, and attack.
 
 Step 29: Planned Next Move - Enemy Detection and Alert State
 Next we will give each enemy a simple detection rule so it can notice the player and switch from idle/patrol into alert. After that, we can build the chase state one small piece at a time.
@@ -192,100 +188,59 @@ Next we will give each enemy a simple detection rule so it can notice the player
 Step 30: Enemy Detection and Alert State Added
 We added a basic distance check so enemies can notice the player when the player gets close. When that happens, the bot switches from patrol into alert and stops moving for a moment.
 
-Why this step matters:
-- It connects the enemy AI to the player instead of letting enemies wander forever.
-- It gives us the first real state change in the enemy state machine.
-- It sets up the next step, which is making alerted enemies chase the player.
+
 
 Step 31: Chase State Added
 We changed the alert state so that when its timer ends, the bot switches into chase. In chase, the enemy moves toward the player until it gets close enough to begin the attack state.
 
-Why this step matters:
-- It turns the enemy from a passive watcher into an active threat.
-- It completes the patrol -> alert -> chase part of the state machine.
-- It prepares the next step, which is making the attack state actually damage the player.
 
 Step 32: Enemy Attack and Player Health Added
 We gave the attack state a real effect: when a bot stays close enough, it now deals damage to the player on a cooldown. We also added player health so the game can track damage properly.
 
-Why this step matters:
-- It makes the attack state matter in gameplay.
-- It starts the player health system required for normal mode.
-- It prepares the next step, which is showing the health on the screen and adding game-over handling.
+
 
 Step 33: HUD Display for the health feature -Heads-Up Display.
 We added a simple on-screen HUD in the top-left corner. It shows the player health, the current score, and the elapsed time so the game feels more complete and easier to play.
 
-Why this step matters:
-- It makes the game state visible to the player.
-- It covers one of the normal mode requirements.
-- It prepares the next step, which is adding game-over and restart handling when health reaches zero.
 
 
 Step 34: Room Doors and Player Entry Added
 We added doorway openings to each room and changed the movement collision check so the player can pass through those openings. The doors are also drawn on the map so the entry points are visible.
 
-Why this step matters:
-- It turns the room grid into a connected space instead of sealed blocks.
-- It lets the player enter rooms through clear openings.
 
 
 Step 35: Enemy Health and Death on Bullet Hit
 We added health to enemy bots and made the player's bullets damage them. When an enemy's health reaches zero, the bot switches to the death state, stops acting, disappears from the room, and gives the player score.
 
-Why this step matters:
-- It completes the player-vs-enemy combat loop.
-- It gives enemies a proper health system like the player.
+
 
 Step 36: alert timer to 5 sec
  made the enemy follow a cleaner flow: patrol first, then a 5-second alert when the player enters detection range, then chase with attack happening at the same time.
 
-Why this step matters:
-- It matches your requested enemy behavior exactly.
-- It gives the player time to enter the room before combat starts.
-- It keeps the enemy moving while it attacks, instead of stopping the chase.
 
 Step 37: Functional Door Collision Logic Added
 We changed player collision to use the room wall strips only, instead of checking the full room rectangle. That means the doorway gap is now the only passable part of the border.
 
-Why this step matters:
-- It makes the door behave like a real opening.
-- It stops the full room from blocking the player.
-- It keeps the wall solid everywhere except the door gap.
 
 Step 38: building the door
  the door builder to use the room's row and column so the single door is placed on a sensible side of the room instead of being tied to the sector number.
 
-Why this step matters:
-- It makes the doorway placement predictable.
-- It keeps the first room reachable from the starting side.
-- It matches the functional door collision system cleanly.
 
 
 Step 39: Active Room Detection Added
 We added a helper that checks the player's position against the room grid and stores the current room in single_global_state_object every frame. This gives the game one clear active room to use for later room-specific logic.
 
-Why this step matters:
-- It lets the game know which room the player is standing in.
-- It prepares room-specific enemy behavior and transitions.
-- It keeps the room system organized before we add the next feature.
+
 
 Step 40: Enemy Updates only for Active Room
 We changed `updateEnemyUnits()` so only enemies whose `currentRoomIndex` matches `single_global_state_object.activeRoomIndex` are processed each frame. Enemies in other rooms are left idle until the player enters their room.
 
-Why this step matters:
-- Keeps enemies confined to their rooms
-- Reduces unnecessary CPU work by only updating local enemies.
-- Prepares for room-based difficulty scaling and transitions.
+
 
 Step 41: Player Collision active only for Active Room
 We updated mainGameLoop() so player movement collision checks use only single_global_state_object.activeRoom.collisionWalls 
 . This prevents cross-room blocking and improves performance.
 
-Why this step matters:
-- Prevents the player from being blocked by distant room walls.
-- Keeps collision work minimal and predictable per frame.
-- Prepares the codebase for door locking and room-specific hazards.
 
 step 42 -pause and resume toggle button
 
@@ -294,10 +249,18 @@ step 43 - restart button
 Step 44: Enemy Immunity Bar and Enemy Bullets Added
 We gave each enemy 3 health points shown as three green sections above the bot. Every bullet hit removes one green section. We also made enemies shoot simple bullets toward the player during attack, and those bullets remove 1 player health on hit.
 
-Why this step matters:
-- It makes enemy health easier to read.
-- It adds a basic ranged attack to enemy combat.
-- It keeps the game moving toward a full combat loop.
+
+
+step 45 - sound effects
+
+
+Step 46: Main Game Loop and Shared Frame State Refactor
+We renamed the core loop to main_game_loop() and added a per-frame snapshot inside single_global_state_object for the player and frame status. 
+This gives the game one cleaner place to store the active room, player position, health, score, pause state, and win/lose state each frame.
+
+
+
+
 
 
 
