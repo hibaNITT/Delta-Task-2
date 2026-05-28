@@ -13,11 +13,15 @@ const ctx = canvas.getContext("2d");
 // Place the player outside the generated room grid (left edge)
 var player_position_x = 15;
 var player_position_y = canvas.height / 2;
-var player_max_health = 10;
+var player_max_health = 30;
 var player_health = player_max_health;
 var gameScore = 0;
 var gameStartTime = Date.now();
+//5min
+var gameDurationSeconds = 300;
 var gamePaused = false;
+var gameOver = false;
+var gameWon = false;
 
 //CREATING ROOMS DYNAMICALLY
 
@@ -347,6 +351,56 @@ function mainGameLoop() {
   single_global_state_object.activeRoom =
     currentRoomIndex >= 0 ? sectorRooms[currentRoomIndex] : null;
 
+  var elapsedSeconds = Math.floor((Date.now() - gameStartTime) / 1000);
+  var remainingSeconds = gameDurationSeconds - elapsedSeconds;
+
+  //game over logic
+  if (player_health <= 0) {
+    gameOver = true;
+  }
+
+  if (remainingSeconds <= 0) {
+    gameOver = true;
+  }
+
+  if (!gameOver && !gameWon) {
+    var livingEnemyCount = 0;
+    for (
+      var enemyIndex = 0;
+      enemyIndex < single_global_state_object.enemies.length;
+      enemyIndex++
+    ) {
+      if (
+        single_global_state_object.enemies[enemyIndex].state !== BOT_STATE_DEATH
+      ) {
+        livingEnemyCount += 1;
+      }
+    }
+
+    if (
+      livingEnemyCount === 0 &&
+      single_global_state_object.enemies.length > 0
+    ) {
+      gameWon = true;
+    }
+  }
+
+  if (gameOver) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawEndOverlay("Game Over", "Press Restart to try again");
+    updateHUD();
+    requestAnimationFrame(mainGameLoop);
+    return;
+  }
+
+  if (gameWon) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawEndOverlay("Sector Cleared", "All hostile bots eliminated");
+    updateHUD();
+    requestAnimationFrame(mainGameLoop);
+    return;
+  }
+
   if (gamePaused) {
     drawPauseOverlay();
     updateHUD();
@@ -645,10 +699,16 @@ function mainGameLoop() {
 function updateHUD() {
   var elapsedSeconds = Math.floor((Date.now() - gameStartTime) / 1000);
 
+  //timer
+  var remainingSeconds = Math.max(0, gameDurationSeconds - elapsedSeconds);
+  var minutes = Math.floor(remainingSeconds / 60);
+  var seconds = remainingSeconds % 60;
+  var timerText = minutes + ":" + (seconds < 10 ? "0" + seconds : seconds);
+
   hudHealth.textContent =
     "Health: " + player_health + " / " + player_max_health;
   hudScore.textContent = "Score: " + gameScore;
-  hudTime.textContent = "Time: " + elapsedSeconds + "s";
+  hudTime.textContent = "Time: " + timerText;
 }
 
 //reset game state
@@ -658,6 +718,8 @@ function resetGame() {
   player_health = player_max_health;
   gameScore = 0;
   gameStartTime = Date.now();
+  gameOver = false;
+  gameWon = false;
 
   keysPressed.w = false;
   keysPressed.a = false;
@@ -771,6 +833,25 @@ function drawPauseOverlay() {
     "Press Resume to continue",
     canvas.width / 2,
     canvas.height / 2 + 28,
+  );
+  ctx.textAlign = "start";
+}
+
+//game over overlay
+
+function drawEndOverlay(titleText, subtitleText) {
+  ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 30px monospace";
+  ctx.textAlign = "center";
+  ctx.fillText(titleText, canvas.width / 2, canvas.height / 2 - 10);
+  ctx.font = "14px monospace";
+  ctx.fillText(
+    subtitleText + " | Final Score: " + gameScore,
+    canvas.width / 2,
+    canvas.height / 2 + 24,
   );
   ctx.textAlign = "start";
 }
@@ -992,7 +1073,7 @@ function darkSpaceCollision_circleWithBox(circle, box) {
 document.addEventListener("keydown", function (event) {
   var keyName = event.key.toLowerCase(); //to avoid capslock
   if (keyName in keysPressed) {
-    if (gamePaused) {
+    if (gamePaused || gameOver || gameWon) {
       event.preventDefault();
       return;
     }
@@ -1204,6 +1285,9 @@ function updateEnemyBullets() {
       if (player_health < 0) {
         player_health = 0;
       }
+      if (player_health <= 0) {
+        gameOver = true;
+      }
       single_global_state_object.enemyBullets.splice(i, 1);
       continue;
     }
@@ -1244,7 +1328,7 @@ window.addEventListener("mousemove", function (event) {
 // Hardware Listener for gun shooting - Mouse Clicks
 canvas.addEventListener("mousedown", function (event) {
   //to disable clicks
-  if (gamePaused) {
+  if (gamePaused || gameOver || gameWon) {
     event.preventDefault();
     return;
   }
