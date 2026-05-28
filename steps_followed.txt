@@ -270,8 +270,7 @@ Why this step matters:
 - It prepares room-specific enemy behavior and transitions.
 - It keeps the room system organized before we add the next feature.
 
-Step 40: Enemy Updates Scoped to Active Room
-
+Step 40: Enemy Updates only for Active Room
 We changed `updateEnemyUnits()` so only enemies whose `currentRoomIndex` matches `single_global_state_object.activeRoomIndex` are processed each frame. Enemies in other rooms are left idle until the player enters their room.
 
 Why this step matters:
@@ -279,7 +278,7 @@ Why this step matters:
 - Reduces unnecessary CPU work by only updating local enemies.
 - Prepares for room-based difficulty scaling and transitions.
 
-Step 41: Player Collision Scoped to Active Room
+Step 41: Player Collision active only for Active Room
 We updated mainGameLoop() so player movement collision checks use only single_global_state_object.activeRoom.collisionWalls 
 . This prevents cross-room blocking and improves performance.
 
@@ -287,6 +286,19 @@ Why this step matters:
 - Prevents the player from being blocked by distant room walls.
 - Keeps collision work minimal and predictable per frame.
 - Prepares the codebase for door locking and room-specific hazards.
+
+step 42 -pause and resume toggle button
+
+step 43 - restart button
+
+Step 44: Enemy Immunity Bar and Enemy Bullets Added
+We gave each enemy 3 health points shown as three green sections above the bot. Every bullet hit removes one green section. We also made enemies shoot simple bullets toward the player during attack, and those bullets remove 1 player health on hit.
+
+Why this step matters:
+- It makes enemy health easier to read.
+- It adds a basic ranged attack to enemy combat.
+- It keeps the game moving toward a full combat loop.
+
 
 
 

@@ -272,6 +272,7 @@ var enemyAttackDamage = 1;
 var enemyAttackCooldownFrames = 30;
 var enemyMaxHealth = 3;
 var enemyBulletDamage = 1;
+var enemyBulletSpeed = 3;
 var enemyKillScore = 1;
 
 // Construct the 20 rooms dynamically
@@ -316,6 +317,7 @@ for (var row = 0; row < gridRows; row++) {
 // instead of having many arrays , we store the arrays in a dictionary
 const single_global_state_object = {
   enemies: [],
+  enemyBullets: [],
   bulletHead: null, // FIRST bullet node in our chain
   bulletTail: null, // LAST bullet node in our chain
   activeRoomIndex: -1,
@@ -505,6 +507,8 @@ function mainGameLoop() {
 
   updateEnemyUnits();
   drawEnemyUnits();
+  updateEnemyBullets();
+  drawEnemyBullets();
 
   // Calculating the angle between player center and mouse cursor
   var distanceX = mouseX - player_position_x;
@@ -548,111 +552,10 @@ function mainGameLoop() {
   while (currentBullet !== null) {
     var nextBulletNode = currentBullet.next;
 
-    // Update positions
     currentBullet.x += currentBullet.vx;
     currentBullet.y += currentBullet.vy;
 
-    //BOUNCE DETECTOR
-    for (var r = 0; r < sectorRooms.length; r++) {
-      var activeRoom = sectorRooms[r];
-
-      if (darkSpaceCollision_circleWithBox(currentBullet, activeRoom)) {
-        var xAxis = { x: 1, y: 0 };
-        var yAxis = { x: 0, y: 1 };
-
-        // Measure shadow overlap on the horizontal axis
-        var bulletSpanX = darkSpaceProject_circle(currentBullet, xAxis);
-        var roomSpanX = darkSpaceProject_box(activeRoom, xAxis);
-        // Measure shadow overlap on the vertical axis
-        var bulletSpanY = darkSpaceProject_circle(currentBullet, yAxis);
-        var roomSpanY = darkSpaceProject_box(activeRoom, yAxis);
-
-        // Compute penetration amounts along each axis (how far they overlap)
-        var overlapXamt =
-          Math.min(bulletSpanX.max, roomSpanX.max) -
-          Math.max(bulletSpanX.min, roomSpanX.min);
-        var overlapYamt =
-          Math.min(bulletSpanY.max, roomSpanY.max) -
-          Math.max(bulletSpanY.min, roomSpanY.min);
-
-        // Angle of Incidence Reflection Engine: resolve along smallest penetration axis
-        if (overlapXamt < overlapYamt) {
-          // Struck a vertical face (side wall): invert horizontal velocity
-          currentBullet.vx = -currentBullet.vx;
-
-          // Push bullet just outside the wall on the X axis
-          if (currentBullet.x < activeRoom.x + activeRoom.width / 2) {
-            currentBullet.x = activeRoom.x - (currentBullet.radius || 4) - 0.1;
-          } else {
-            currentBullet.x =
-              activeRoom.x +
-              activeRoom.width +
-              (currentBullet.radius || 4) +
-              0.1;
-          }
-        } else {
-          // Struck a horizontal face (ceiling/floor): invert vertical velocity
-          currentBullet.vy = -currentBullet.vy;
-
-          // Push bullet just outside the wall on the Y axis
-          if (currentBullet.y < activeRoom.y + activeRoom.height / 2) {
-            currentBullet.y = activeRoom.y - (currentBullet.radius || 4) - 0.1;
-          } else {
-            currentBullet.y =
-              activeRoom.y +
-              activeRoom.height +
-              (currentBullet.radius || 4) +
-              0.1;
-          }
-        }
-
-        break; // Impact resolved for this bullet frame ... skip remaining rooms
-      }
-    }
-
-    // Check if the bullet hits any enemy bot.
-    for (var e = 0; e < single_global_state_object.enemies.length; e++) {
-      var enemyBot = single_global_state_object.enemies[e];
-
-      if (enemyBot.state === BOT_STATE_DEATH) {
-        continue;
-      }
-
-      var enemyDistanceX = currentBullet.x - enemyBot.x;
-      var enemyDistanceY = currentBullet.y - enemyBot.y;
-      var enemyHitDistance = Math.sqrt(
-        enemyDistanceX * enemyDistanceX + enemyDistanceY * enemyDistanceY,
-      );
-
-      if (enemyHitDistance <= currentBullet.radius + enemyBot.radius) {
-        enemyBot.health -= enemyBulletDamage;
-
-        if (enemyBot.health <= 0) {
-          enemyBot.health = 0;
-          enemyBot.state = BOT_STATE_DEATH;
-          enemyBot.vx = 0;
-          enemyBot.vy = 0;
-          gameScore += enemyKillScore;
-        }
-
-        if (currentBullet.prev !== null) {
-          currentBullet.prev.next = currentBullet.next;
-        } else {
-          single_global_state_object.bulletHead = currentBullet.next;
-        }
-
-        if (currentBullet.next !== null) {
-          currentBullet.next.prev = currentBullet.prev;
-        } else {
-          single_global_state_object.bulletTail = currentBullet.prev;
-        }
-
-        currentBullet = nextBulletNode;
-        continue;
-      }
-    }
-
-    // Offscreen Cleanup
+    reflectBulletFromWalls(currentBullet);
     if (
       currentBullet.x < -10 ||
       currentBullet.x > canvas.width + 10 ||
@@ -716,10 +619,77 @@ function resetGame() {
 
   single_global_state_object.bulletHead = null;
   single_global_state_object.bulletTail = null;
+  single_global_state_object.enemyBullets = [];
 
   spawnEnemiesInRooms();
   setGamePaused(false);
   updateHUD();
+}
+
+function spawnEnemyBullet(bot, targetX, targetY) {
+  var dx = targetX - bot.x;
+  var dy = targetY - bot.y;
+  var distance = Math.sqrt(dx * dx + dy * dy);
+
+  if (distance === 0) {
+    distance = 1;
+  }
+
+  single_global_state_object.enemyBullets.push({
+    x: bot.x,
+    y: bot.y,
+    vx: (dx / distance) * enemyBulletSpeed,
+    vy: (dy / distance) * enemyBulletSpeed,
+    radius: 3,
+  });
+}
+
+// implementing a common collition property for both enemy and player bullets
+function reflectBulletFromWalls(bullet) {
+  for (var r = 0; r < sectorRooms.length; r++) {
+    var activeRoom = sectorRooms[r];
+
+    if (darkSpaceCollision_circleWithBox(bullet, activeRoom)) {
+      var xAxis = { x: 1, y: 0 };
+      var yAxis = { x: 0, y: 1 };
+
+      var bulletSpanX = darkSpaceProject_circle(bullet, xAxis);
+      var roomSpanX = darkSpaceProject_box(activeRoom, xAxis);
+      var bulletSpanY = darkSpaceProject_circle(bullet, yAxis);
+      var roomSpanY = darkSpaceProject_box(activeRoom, yAxis);
+
+      var overlapXamt =
+        Math.min(bulletSpanX.max, roomSpanX.max) -
+        Math.max(bulletSpanX.min, roomSpanX.min);
+      var overlapYamt =
+        Math.min(bulletSpanY.max, roomSpanY.max) -
+        Math.max(bulletSpanY.min, roomSpanY.min);
+
+      if (overlapXamt < overlapYamt) {
+        bullet.vx = -bullet.vx;
+
+        if (bullet.x < activeRoom.x + activeRoom.width / 2) {
+          bullet.x = activeRoom.x - (bullet.radius || 4) - 0.1;
+        } else {
+          bullet.x =
+            activeRoom.x + activeRoom.width + (bullet.radius || 4) + 0.1;
+        }
+      } else {
+        bullet.vy = -bullet.vy;
+
+        if (bullet.y < activeRoom.y + activeRoom.height / 2) {
+          bullet.y = activeRoom.y - (bullet.radius || 4) - 0.1;
+        } else {
+          bullet.y =
+            activeRoom.y + activeRoom.height + (bullet.radius || 4) + 0.1;
+        }
+      }
+
+      return true;
+    }
+  }
+
+  return false;
 }
 
 //pause button
@@ -1072,21 +1042,17 @@ function updateEnemyUnits() {
         bot.state = BOT_STATE_CHASE;
       }
     } else if (bot.state === BOT_STATE_CHASE) {
+      if (distanceToPlayer === 0) {
+        distanceToPlayer = 1;
+      }
+
       bot.vx = (distanceToPlayerX / distanceToPlayer) * enemyChaseSpeed;
       bot.vy = (distanceToPlayerY / distanceToPlayer) * enemyChaseSpeed;
       bot.x += bot.vx;
       bot.y += bot.vy;
 
       if (distanceToPlayer <= enemyAttackRange) {
-        if (bot.attackCooldownTimer > 0) {
-          bot.attackCooldownTimer -= 1;
-        } else {
-          player_health -= enemyAttackDamage;
-          if (player_health < 0) {
-            player_health = 0;
-          }
-          bot.attackCooldownTimer = enemyAttackCooldownFrames;
-        }
+        bot.state = BOT_STATE_ATTACK;
       } else {
         bot.attackCooldownTimer = 0;
       }
@@ -1100,6 +1066,22 @@ function updateEnemyUnits() {
         room.y + bot.radius,
         Math.min(bot.y, room.y + room.height - bot.radius),
       );
+    } else if (bot.state === BOT_STATE_ATTACK) {
+      bot.vx = 0;
+      bot.vy = 0;
+
+      if (distanceToPlayer > enemyAttackRange + 12) {
+        bot.state = BOT_STATE_CHASE;
+        bot.attackCooldownTimer = 0;
+        continue;
+      }
+
+      if (bot.attackCooldownTimer > 0) {
+        bot.attackCooldownTimer -= 1;
+      } else {
+        spawnEnemyBullet(bot, player_position_x, player_position_y);
+        bot.attackCooldownTimer = enemyAttackCooldownFrames;
+      }
     }
   }
 }
@@ -1124,6 +1106,77 @@ function drawEnemyUnits() {
     ctx.arc(bot.x, bot.y, 10, 0, Math.PI * 2);
 
     ctx.fillStyle = "#FF3333";
+    ctx.fill();
+    ctx.closePath();
+
+    var barWidth = 24;
+    var barHeight = 4;
+    var segmentWidth = barWidth / 3;
+    var barX = bot.x - barWidth / 2;
+    var barY = bot.y - bot.radius - 12;
+
+    ctx.strokeStyle = "#000000";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(barX, barY, barWidth, barHeight);
+
+    for (var segment = 0; segment < 3; segment++) {
+      ctx.fillStyle = segment < bot.health ? "#33ff33" : "#143014";
+      ctx.fillRect(
+        barX + segment * segmentWidth + 1,
+        barY + 1,
+        segmentWidth - 2,
+        barHeight - 2,
+      );
+    }
+  }
+}
+
+function updateEnemyBullets() {
+  for (
+    var i = single_global_state_object.enemyBullets.length - 1;
+    i >= 0;
+    i--
+  ) {
+    var bullet = single_global_state_object.enemyBullets[i];
+
+    bullet.x += bullet.vx;
+    bullet.y += bullet.vy;
+
+    reflectBulletFromWalls(bullet);
+
+    var playerDistanceX = bullet.x - player_position_x;
+    var playerDistanceY = bullet.y - player_position_y;
+    var playerDistance = Math.sqrt(
+      playerDistanceX * playerDistanceX + playerDistanceY * playerDistanceY,
+    );
+
+    if (playerDistance <= bullet.radius + 10) {
+      player_health -= 1;
+      if (player_health < 0) {
+        player_health = 0;
+      }
+      single_global_state_object.enemyBullets.splice(i, 1);
+      continue;
+    }
+
+    if (
+      bullet.x < -10 ||
+      bullet.x > canvas.width + 10 ||
+      bullet.y < -10 ||
+      bullet.y > canvas.height + 10
+    ) {
+      single_global_state_object.enemyBullets.splice(i, 1);
+    }
+  }
+}
+
+function drawEnemyBullets() {
+  for (var i = 0; i < single_global_state_object.enemyBullets.length; i++) {
+    var bullet = single_global_state_object.enemyBullets[i];
+
+    ctx.fillStyle = "#15ff00";
+    ctx.beginPath();
+    ctx.arc(bullet.x, bullet.y, bullet.radius, 0, Math.PI * 2);
     ctx.fill();
     ctx.closePath();
   }
