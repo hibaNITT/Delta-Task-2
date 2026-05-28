@@ -556,6 +556,53 @@ function mainGameLoop() {
     currentBullet.y += currentBullet.vy;
 
     reflectBulletFromWalls(currentBullet);
+
+    //enemy hit detection and immunity change
+    var bulletHitEnemy = false;
+    for (var e = 0; e < single_global_state_object.enemies.length; e++) {
+      var enemy = single_global_state_object.enemies[e];
+
+      if (enemy.state === BOT_STATE_DEATH) {
+        continue;
+      }
+
+      var enemyDistanceX = currentBullet.x - enemy.x;
+      var enemyDistanceY = currentBullet.y - enemy.y;
+      var enemyDistance = Math.sqrt(
+        enemyDistanceX * enemyDistanceX + enemyDistanceY * enemyDistanceY,
+      );
+
+      if (enemyDistance <= currentBullet.radius + enemy.radius) {
+        enemy.health -= 1;
+
+        if (enemy.health <= 0) {
+          enemy.health = 0;
+          enemy.state = BOT_STATE_DEATH;
+          gameScore += enemyKillScore;
+        }
+
+        if (currentBullet.prev !== null) {
+          currentBullet.prev.next = currentBullet.next;
+        } else {
+          single_global_state_object.bulletHead = currentBullet.next;
+        }
+
+        if (currentBullet.next !== null) {
+          currentBullet.next.prev = currentBullet.prev;
+        } else {
+          single_global_state_object.bulletTail = currentBullet.prev;
+        }
+
+        bulletHitEnemy = true;
+        break;
+      }
+    }
+
+    if (bulletHitEnemy) {
+      currentBullet = nextBulletNode;
+      continue;
+    }
+
     if (
       currentBullet.x < -10 ||
       currentBullet.x > canvas.width + 10 ||
