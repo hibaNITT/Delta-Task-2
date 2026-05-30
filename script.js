@@ -1053,6 +1053,10 @@ function spawnEnemiesInRooms() {
       type: "normal",
       color: "#33ff33",
     };
+    // This checks if applyEnemyVariantForRoom is actually defined and is a function.
+    if (typeof applyEnemyVariantForRoom === "function") {
+      applyEnemyVariantForRoom(enemyBot, i);
+    }
 
     // Push the newly created bot into our master state dictionary array
     single_global_state_object.enemies.push(enemyBot);
@@ -1074,9 +1078,7 @@ try {
         bot.type = "roamer";
         bot.color = "#002b66";
       }
-      // Roamer (chase-capable) bots have extended immunity/health
-      bot.maxHealth = 5;
-      bot.health = 5;
+      // Roamer setup (health handled by makeRoamer)
     }
   }
 } catch (e) {

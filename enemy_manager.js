@@ -5,6 +5,24 @@ function makeRoamer(bot) {
   bot.roamTargetX = bot.x;
   bot.roamTargetY = bot.y;
   bot.roamTimer = 0;
+  // Give roamers higher health by default
+  bot.maxHealth = 5;
+  bot.health = 5;
+}
+//to make the bots pink
+function makePinkTenHealthBot(bot) {
+  bot.type = "pink_tank";
+  bot.color = "#ff7ab8";
+  bot.maxHealth = 10;
+  bot.health = 10;
+}
+
+function applyEnemyVariantForRoom(bot, roomIndex) {
+  var pinkRooms = [1, 7, 12];
+
+  if (pinkRooms.indexOf(roomIndex) !== -1) {
+    makePinkTenHealthBot(bot);
+  }
 }
 
 function updateRoamerChase(bot) {
