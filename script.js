@@ -682,7 +682,7 @@ function main_game_loop() {
     for (var e = 0; e < single_global_state_object.enemies.length; e++) {
       var enemy = single_global_state_object.enemies[e];
 
-      if (enemy.state === BOT_STATE_DEATH) {
+      if (enemy.state === BOT_STATE_DEATH || enemy.isHidden) {
         continue;
       }
 
@@ -1072,13 +1072,13 @@ try {
   for (var r = 0; r < single_global_state_object.enemies.length; r++) {
     var bot = single_global_state_object.enemies[r];
     if (roamerRooms.indexOf(bot.currentRoomIndex) !== -1) {
-      if (typeof makeRoamer === "function") {
-        makeRoamer(bot);
+      if (typeof makeRoamerBot === "function") {
+        makeRoamerBot(bot);
       } else {
         bot.type = "roamer";
         bot.color = "#002b66";
       }
-      // Roamer setup (health handled by makeRoamer)
+      // Roamer setup (health handled by makeRoamerBot)
     }
   }
 } catch (e) {
@@ -1401,6 +1401,16 @@ function updateEnemyUnits() {
       continue;
     }
 
+    //just ensuring that the function exists and per frame logic ryt
+    if (typeof updateBlinkingLightBlueBot === "function") {
+      updateBlinkingLightBlueBot(bot);
+      if (bot.isHidden) {
+        bot.vx = 0;
+        bot.vy = 0; //vanish
+        continue;
+      }
+    }
+
     // Skip any bots that are not in the player's active room, except roamers
     if (bot.type !== "roamer" && bot.currentRoomIndex !== activeRoomIndex) {
       continue;
@@ -1545,7 +1555,7 @@ function drawEnemyUnits() {
   for (var i = 0; i < currentBots.length; i++) {
     var bot = currentBots[i];
 
-    if (bot.state === BOT_STATE_DEATH) {
+    if (bot.state === BOT_STATE_DEATH || bot.isHidden) {
       continue;
     }
 

@@ -1,5 +1,5 @@
 // Roamer enemy type: when in CHASE state it wanders around the room
-function makeRoamer(bot) {
+function makeRoamerBot(bot) {
   bot.type = "roamer";
   bot.color = "#002b66";
   bot.roamTargetX = bot.x;
@@ -8,6 +8,41 @@ function makeRoamer(bot) {
   // Give roamers higher health by default
   bot.maxHealth = 5;
   bot.health = 5;
+}
+
+// Light blue bot that disappears and reappears in the same room on a timer.
+function makeBlinkingLightBlueBot(bot) {
+  bot.type = "phase_blink";
+  bot.color = "#7fdcff";
+  bot.visibleTimer = 50;
+  bot.hiddenTimer = 90;
+  bot.blinkTimer = bot.visibleTimer;
+  bot.isHidden = false;
+  bot.maxHealth = 5;
+  bot.health = 5;
+}
+
+function updateBlinkingLightBlueBot(bot) {
+  if (bot.type !== "phase_blink") {
+    return;
+  }
+
+  if (typeof bot.blinkTimer !== "number") {
+    bot.blinkTimer = bot.isHidden ? bot.hiddenTimer : bot.visibleTimer;
+  }
+
+  if (bot.blinkTimer > 0) {
+    bot.blinkTimer -= 1;
+    return;
+  }
+
+  bot.isHidden = !bot.isHidden;
+  bot.blinkTimer = bot.isHidden ? bot.hiddenTimer : bot.visibleTimer;
+
+  if (bot.isHidden) {
+    bot.vx = 0;
+    bot.vy = 0;
+  }
 }
 //to make the bots pink
 function makePinkTenHealthBot(bot) {
@@ -19,9 +54,14 @@ function makePinkTenHealthBot(bot) {
 
 function applyEnemyVariantForRoom(bot, roomIndex) {
   var pinkRooms = [1, 7, 12];
+  var blinkingLightBlueRooms = [5, 14];
 
   if (pinkRooms.indexOf(roomIndex) !== -1) {
     makePinkTenHealthBot(bot);
+  }
+
+  if (blinkingLightBlueRooms.indexOf(roomIndex) !== -1) {
+    makeBlinkingLightBlueBot(bot);
   }
 }
 
