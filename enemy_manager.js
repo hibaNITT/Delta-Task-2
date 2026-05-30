@@ -64,7 +64,7 @@ function makePinkTenHealthBot(bot) {
 
 function applyEnemyVariantForRoom(bot, roomIndex) {
   var pinkRooms = [1, 7, 12];
-  var blinkingLightBlueRooms = [5, 14];
+  var blinkingLightBlueRooms = [5, 14, 8];
   var lightPurpleTeleportRooms = [2, 9, 18];
 
   //making enemy bot function calls
