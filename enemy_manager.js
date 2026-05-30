@@ -32,6 +32,16 @@ function makeLightPurpleTeleportBot(bot) {
   bot.teleportTimer = bot.teleportCooldownFrames;
 }
 
+// Red bot that explodes when it dies.
+function makeExplosiveRedBot(bot) {
+  bot.type = "explosive_red";
+  bot.color = "#ff2b2b";
+  bot.maxHealth = 3;
+  bot.health = 3;
+  bot.explosionRadius = 65;
+  bot.explosionDamage = 3;
+}
+
 function updateBlinkingLightBlueBot(bot) {
   if (bot.type !== "phase_blink") {
     return;
@@ -66,6 +76,7 @@ function applyEnemyVariantForRoom(bot, roomIndex) {
   var pinkRooms = [1, 7, 12];
   var blinkingLightBlueRooms = [5, 14, 8];
   var lightPurpleTeleportRooms = [2, 9, 18];
+  var explosiveRedRooms = [3, 10, 19];
 
   //making enemy bot function calls
 
@@ -81,6 +92,12 @@ function applyEnemyVariantForRoom(bot, roomIndex) {
     makeLightPurpleTeleportBot(bot);
     bot.displayName =
       "Bot " + (lightPurpleTeleportRooms.indexOf(roomIndex) + 1);
+  }
+
+  if (explosiveRedRooms.indexOf(roomIndex) !== -1) {
+    makeExplosiveRedBot(bot);
+    bot.displayName =
+      "Explosive Bot " + (explosiveRedRooms.indexOf(roomIndex) + 1);
   }
 }
 

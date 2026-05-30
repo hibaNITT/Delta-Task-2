@@ -284,8 +284,8 @@ step 49 - distinct enemy ideas
 2. enemy with 10 healths - pink - 3
 3. enemy that can dissappear and appear in the same room - light blue - 3
 4. enemy that can teleprt to empty rooms - light purple- 3
-5.Explosive bot — detonates on death, damages surrounding area - red -2
-6. normal bot - green - 
+5.Explosive bot — detonates on death, damages surrounding area - red - 3
+6. normal bot - green - 5
 
 
 

@@ -27,6 +27,7 @@ var gameOverSoundPlayed = false;
 var gameWonSoundPlayed = false;
 var roomAlertMessage = "";
 var roomAlertTimer = 0;
+var explosionEffects = [];
 
 var previousRoomIndex = null;
 
@@ -429,6 +430,92 @@ function showRoomAlert(message) {
   roomAlertMessage = message;
   roomAlertTimer = 120;
 }
+//red explosion bot
+function triggerExplosionEffect(centerX, centerY) {
+  var sparks = [];
+
+  for (var i = 0; i < 10; i++) {
+    var angle = (Math.PI * 2 * i) / 10;
+    sparks.push({
+      x: centerX,
+      y: centerY,
+      vx: Math.cos(angle) * (1.5 + Math.random() * 2.5),
+      vy: Math.sin(angle) * (1.5 + Math.random() * 2.5),
+      life: 16 + Math.floor(Math.random() * 8),
+    });
+  }
+
+  explosionEffects.push({
+    x: centerX,
+    y: centerY,
+    radius: 6,
+    maxRadius: 65,
+    life: 24,
+    maxLife: 24,
+    sparks: sparks,
+  });
+}
+
+function updateExplosionEffects() {
+  for (var i = explosionEffects.length - 1; i >= 0; i--) {
+    var effect = explosionEffects[i];
+    effect.life -= 1;
+
+    for (var s = 0; s < effect.sparks.length; s++) {
+      effect.sparks[s].x += effect.sparks[s].vx;
+      effect.sparks[s].y += effect.sparks[s].vy;
+      effect.sparks[s].life -= 1;
+    }
+
+    if (effect.life <= 0) {
+      explosionEffects.splice(i, 1);
+    }
+  }
+}
+
+function drawExplosionEffects() {
+  for (var i = 0; i < explosionEffects.length; i++) {
+    var effect = explosionEffects[i];
+    var lifeRatio = effect.life / effect.maxLife;
+    var currentRadius =
+      effect.radius + (effect.maxRadius - effect.radius) * (1 - lifeRatio);
+
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+
+    ctx.beginPath();
+    ctx.arc(effect.x, effect.y, currentRadius, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255, 80, 0, " + 0.18 * lifeRatio + ")";
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(effect.x, effect.y, currentRadius * 0.55, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255, 230, 90, " + 0.22 * lifeRatio + ")";
+    ctx.fill();
+
+    ctx.strokeStyle = "rgba(255, 255, 255, " + 0.85 * lifeRatio + ")";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(effect.x, effect.y, currentRadius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    for (var s = 0; s < effect.sparks.length; s++) {
+      var spark = effect.sparks[s];
+      if (spark.life <= 0) {
+        continue;
+      }
+
+      ctx.strokeStyle = "rgba(255, 180, 40, " + spark.life / 24 + ")";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(effect.x, effect.y);
+      ctx.lineTo(spark.x, spark.y);
+      ctx.stroke();
+    }
+
+    ctx.restore();
+  }
+}
 
 function blockPlayerFromRoom(pointX, pointY) {
   if (playerHasDestroyedAnyBot) {
@@ -459,6 +546,8 @@ function main_game_loop() {
       roomAlertMessage = "";
     }
   }
+  //for red bot
+  updateExplosionEffects();
 
   var currentRoomIndex = findPlayerCurrentRoomIndex(
     player_position_x,
@@ -728,6 +817,8 @@ function main_game_loop() {
   drawEnemyUnits();
   updateEnemyBullets();
   drawEnemyBullets();
+  //for red bot
+  drawExplosionEffects();
 
   // Calculating the angle between player center and mouse cursor
   var distanceX = mouseX - player_position_x;
@@ -837,6 +928,30 @@ function main_game_loop() {
           if (enemy.displayName) {
             showRoomAlert(enemy.displayName + " was destroyed");
           }
+
+          if (enemy.type === "explosive_red") {
+            triggerExplosionEffect(enemy.x, enemy.y);
+
+            var playerExplosionDistanceX = player_position_x - enemy.x;
+            var playerExplosionDistanceY = player_position_y - enemy.y;
+            var playerExplosionDistance = Math.sqrt(
+              playerExplosionDistanceX * playerExplosionDistanceX +
+                playerExplosionDistanceY * playerExplosionDistanceY,
+            );
+
+            if (playerExplosionDistance <= (enemy.explosionRadius || 65)) {
+              player_health -= enemy.explosionDamage || 3;
+
+              if (player_health < 0) {
+                player_health = 0;
+              }
+
+              showRoomAlert(
+                (enemy.displayName || "Explosive Bot") + " exploded!",
+              );
+            }
+          }
+
           playerHasDestroyedAnyBot = true;
           gameScore += enemyKillScore;
         }
@@ -962,6 +1077,7 @@ function resetGame() {
   previousRoomIndex = null;
   roomAlertMessage = "";
   roomAlertTimer = 0;
+  explosionEffects = [];
   playerHasDestroyedAnyBot = false;
 
   keysPressed.w = false;
@@ -1932,6 +2048,7 @@ function drawSceneInsideCone() {
   // draw enemies and bullets (use existing helpers)
   drawEnemyUnits();
   drawEnemyBullets();
+  drawExplosionEffects();
 
   // redraw bullets from linked list
   var currentBullet = single_global_state_object.bulletHead;
