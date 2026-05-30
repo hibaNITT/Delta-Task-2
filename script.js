@@ -29,6 +29,9 @@ var roomAlertMessage = "";
 var roomAlertTimer = 0;
 var explosionEffects = [];
 
+// brief red flash when player takes damage
+var playerHitFlashTimer = 0; // frames
+
 var previousRoomIndex = null;
 
 // Visibility settings
@@ -546,6 +549,10 @@ function main_game_loop() {
       roomAlertMessage = "";
     }
   }
+  // decrement hit flash timer
+  if (playerHitFlashTimer > 0) {
+    playerHitFlashTimer -= 1;
+  }
   //for red bot
   updateExplosionEffects();
 
@@ -941,6 +948,7 @@ function main_game_loop() {
 
             if (playerExplosionDistance <= (enemy.explosionRadius || 65)) {
               player_health -= enemy.explosionDamage || 3;
+              playerHitFlashTimer = 18;
 
               if (player_health < 0) {
                 player_health = 0;
@@ -1018,6 +1026,15 @@ function main_game_loop() {
   renderVisibilityCone();
   // Redraw player on top so the player is always visible inside the cone
   drawPlayerTop();
+
+  // draw brief red flash if player was recently hit
+  if (playerHitFlashTimer > 0) {
+    var alpha = Math.min(0.9, playerHitFlashTimer / 18 * 0.9);
+    ctx.save();
+    ctx.fillStyle = "rgba(255,0,0," + alpha + ")";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.restore();
+  }
   requestAnimationFrame(main_game_loop);
 }
 
@@ -1310,10 +1327,14 @@ function spawnEnemiesInRooms() {
       waitTimer: 0,
       alertTimer: 0,
       attackCooldownTimer: 0,
-      facingAngle: 0,
+      facingAngle: Math.random() * Math.PI * 2,
       type: "normal",
       color: "#33ff33",
     };
+
+    enemyBot.patrolTargetX = room.x + 16 + Math.random() * (room.width - 32);
+    enemyBot.patrolTargetY = room.y + 16 + Math.random() * (room.height - 32);
+
     // This checks if applyEnemyVariantForRoom is actually defined and is a function.
     if (typeof applyEnemyVariantForRoom === "function") {
       applyEnemyVariantForRoom(enemyBot, i);
@@ -1413,6 +1434,38 @@ function tryTeleportLightPurpleBot(bot) {
   }
 
   bot.teleportTimer = bot.teleportCooldownFrames || 180;
+}
+
+//helper functions to check enemy movement
+
+function getBotAssignedRoom(bot) {
+  return (
+    sectorRooms[bot.ownedRoomIndex] || sectorRooms[bot.currentRoomIndex] || null
+  );
+}
+
+function keepBotInsideAssignedRoom(bot, room) {
+  if (!room || bot.type === "roamer" || bot.type === "teleport_light_purple") {
+    return;
+  }
+
+  bot.x = Math.max(
+    room.x + bot.radius,
+    Math.min(bot.x, room.x + room.width - bot.radius),
+  );
+  bot.y = Math.max(
+    room.y + bot.radius,
+    Math.min(bot.y, room.y + room.height - bot.radius),
+  );
+}
+
+function syncBotRoomIndex(bot) {
+  if (bot.type === "roamer" || bot.type === "teleport_light_purple") {
+    bot.currentRoomIndex = findPlayerCurrentRoomIndex(bot.x, bot.y);
+    return;
+  }
+
+  bot.currentRoomIndex = bot.ownedRoomIndex;
 }
 
 // SAT helper functions
@@ -1732,8 +1785,7 @@ function updateEnemyUnits() {
       continue;
     }
 
-    var room =
-      sectorRooms[bot.currentRoomIndex] || sectorRooms[bot.ownedRoomIndex];
+    var room = getBotAssignedRoom(bot);
 
     if (!room) {
       continue;
@@ -1777,14 +1829,7 @@ function updateEnemyUnits() {
       }
 
       // Keep patrol enemies inside their assigned room boundaries.
-      bot.x = Math.max(
-        room.x + bot.radius,
-        Math.min(bot.x, room.x + room.width - bot.radius),
-      );
-      bot.y = Math.max(
-        room.y + bot.radius,
-        Math.min(bot.y, room.y + room.height - bot.radius),
-      );
+      keepBotInsideAssignedRoom(bot, room);
     } else if (bot.state === BOT_STATE_ALERT) {
       if (bot.alertTimer > 0) {
         bot.alertTimer -= 1;
@@ -1835,14 +1880,7 @@ function updateEnemyUnits() {
         }
 
         // Keep chasing enemies inside their assigned room boundaries.
-        bot.x = Math.max(
-          room.x + bot.radius,
-          Math.min(bot.x, room.x + room.width - bot.radius),
-        );
-        bot.y = Math.max(
-          room.y + bot.radius,
-          Math.min(bot.y, room.y + room.height - bot.radius),
-        );
+        keepBotInsideAssignedRoom(bot, room);
       }
     } else if (bot.state === BOT_STATE_ATTACK) {
       bot.vx = 0;
@@ -1862,8 +1900,8 @@ function updateEnemyUnits() {
         bot.attackCooldownTimer = enemyAttackCooldownFrames;
       }
     }
-    // Update which room the bot is currently inside (or -1 if none)
-    bot.currentRoomIndex = findPlayerCurrentRoomIndex(bot.x, bot.y);
+    // Update which room the bot is currently inside (or keep its home room for standard bots).
+    syncBotRoomIndex(bot);
   }
 }
 
@@ -1930,6 +1968,7 @@ function updateEnemyBullets() {
 
     if (playerDistance <= bullet.radius + 10) {
       player_health -= 1;
+      playerHitFlashTimer = 12;
       if (player_health < 0) {
         player_health = 0;
       }
