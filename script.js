@@ -1211,7 +1211,6 @@ function spawnEnemiesInRooms() {
 // Call the function immediately to populate the map when the script runs
 spawnEnemiesInRooms();
 
-// Ensure specific rooms have the roamer property: rooms 1, 7, 16 . indices 0,6,15
 try {
   var roamerRooms = [0, 6, 15];
   for (var r = 0; r < single_global_state_object.enemies.length; r++) {

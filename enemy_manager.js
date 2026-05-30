@@ -80,7 +80,7 @@ function applyEnemyVariantForRoom(bot, roomIndex) {
   if (lightPurpleTeleportRooms.indexOf(roomIndex) !== -1) {
     makeLightPurpleTeleportBot(bot);
     bot.displayName =
-      lightPurpleTeleportRooms.indexOf(roomIndex) === 0 ? "Bot 1" : "Bot 2";
+      "Bot " + (lightPurpleTeleportRooms.indexOf(roomIndex) + 1);
   }
 }
 

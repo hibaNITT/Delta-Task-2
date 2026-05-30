@@ -282,12 +282,10 @@ step 49 - distinct enemy ideas
 
 1. enemy when in chase moode can roam - darkblue - 3
 2. enemy with 10 healths - pink - 3
-3. enemy that can dissappear and appear in the same room - light blue -2
+3. enemy that can dissappear and appear in the same room - light blue - 3
 4. enemy that can teleprt to empty rooms - light purple- 3
-5.enemy shots that takes up players 3 healths at one shot  - dark purple -2
-6.Cloaked enemy — invisible unless the player is within short range -  cyan -2
-7.Explosive bot — detonates on death, damages surrounding area - red -2
-8. normal bot - green - 3
+5.Explosive bot — detonates on death, damages surrounding area - red -2
+6. normal bot - green - 
 
 
 
