@@ -1327,24 +1327,6 @@ function spawnEnemiesInRooms() {
 // Call the function immediately to populate the map when the script runs
 spawnEnemiesInRooms();
 
-try {
-  var roamerRooms = [0, 6, 15];
-  for (var r = 0; r < single_global_state_object.enemies.length; r++) {
-    var bot = single_global_state_object.enemies[r];
-    if (roamerRooms.indexOf(bot.currentRoomIndex) !== -1) {
-      if (typeof makeRoamerBot === "function") {
-        makeRoamerBot(bot);
-      } else {
-        bot.type = "roamer";
-        bot.color = "#002b66";
-      }
-      // Roamer setup (health handled by makeRoamerBot)
-    }
-  }
-} catch (e) {
-  // ignore
-}
-
 function enemyCanSeePlayer(bot) {
   var dx = player_position_x - bot.x;
   var dy = player_position_y - bot.y;

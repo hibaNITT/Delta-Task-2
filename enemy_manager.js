@@ -73,6 +73,7 @@ function makePinkTenHealthBot(bot) {
 }
 
 function applyEnemyVariantForRoom(bot, roomIndex) {
+  var roamerRooms = [0, 6, 15];
   var pinkRooms = [1, 7, 12];
   var blinkingLightBlueRooms = [5, 14, 8];
   var lightPurpleTeleportRooms = [2, 9, 18];
@@ -82,6 +83,17 @@ function applyEnemyVariantForRoom(bot, roomIndex) {
 
   if (pinkRooms.indexOf(roomIndex) !== -1) {
     makePinkTenHealthBot(bot);
+  }
+
+  if (roamerRooms.indexOf(roomIndex) !== -1) {
+    if (typeof makeRoamerBot === "function") {
+      makeRoamerBot(bot);
+    } else {
+      bot.type = "roamer";
+      bot.color = "#002b66";
+      bot.maxHealth = 5;
+      bot.health = 5;
+    }
   }
 
   if (blinkingLightBlueRooms.indexOf(roomIndex) !== -1) {
