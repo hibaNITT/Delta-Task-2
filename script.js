@@ -1127,6 +1127,11 @@ function updateHUD() {
   hudScore.textContent = "Score: " + gameScore;
   hudTime.textContent = "Time: " + timerText;
   hudRoomAlert.textContent = roomAlertMessage;
+  var hudShortcuts = document.getElementById("hudShortcuts");
+  if (hudShortcuts) {
+    hudShortcuts.textContent =
+      "Move: WASD | Aim: Mouse | Fire: Left Click | Pause/Resume: P | Restart: R";
+  }
   // update the left-hand enemy list hud with counts and features
   updateEnemyLegend();
 }
@@ -1154,25 +1159,26 @@ function updateEnemyLegend() {
       key: "phase_blink",
       name: "Phase Bot",
       color: "#7fdcff",
-      features: "Blinks (hidden/visible) on a timer",
+      features: "Blinks (hidden/visible) on a timer but in the same room",
     },
     {
       key: "teleport_light_purple",
       name: "Teleport Bot",
       color: "#d7a8ff",
-      features: "Teleports between eligible empty rooms",
+      features: "Teleports into other empty rooms",
     },
     {
       key: "explosive_red",
       name: "Explosive Bot",
       color: "#ff2b2b",
-      features: "Explodes on death, dealing area damage",
+      features:
+        "Explodes on death, if the player is in the room on explosion the player loses 3 health...so escape immediately!!!!",
     },
     {
-      key: "pink_tank",
-      name: "Pink Tank",
+      key: "pink_immune",
+      name: "Pink_Immune",
       color: "#ff7ab8",
-      features: "High health tank; durable but slower",
+      features: "Immune bot with 10 health",
     },
   ];
 
@@ -1420,11 +1426,19 @@ function drawEndOverlay(titleText, subtitleText) {
   ctx.font = "bold 30px monospace";
   ctx.textAlign = "center";
   ctx.fillText(titleText, canvas.width / 2, canvas.height / 2 - 10);
-  ctx.font = "14px monospace";
+  ctx.font = "16px monospace";
+  ctx.fillText(subtitleText, canvas.width / 2, canvas.height / 2 + 22);
+  ctx.font = "bold 16px monospace";
   ctx.fillText(
-    subtitleText + " | Final Score: " + gameScore,
+    "Final Score: " + gameScore,
     canvas.width / 2,
-    canvas.height / 2 + 24,
+    canvas.height / 2 + 46,
+  );
+  ctx.font = "13px monospace";
+  ctx.fillText(
+    "Press R or Restart to begin again",
+    canvas.width / 2,
+    canvas.height / 2 + 70,
   );
   ctx.textAlign = "start";
 }
@@ -1890,6 +1904,21 @@ document.addEventListener("keydown", function (event) {
   }
 
   var keyName = event.key.toLowerCase(); //to avoid capslock
+
+  if (keyName === "p") {
+    event.preventDefault();
+    if (!gameOver && !gameWon) {
+      setGamePaused(!gamePaused);
+    }
+    return;
+  }
+
+  if (keyName === "r" && (gameOver || gameWon)) {
+    event.preventDefault();
+    resetGame();
+    return;
+  }
+
   if (keyName in keysPressed) {
     if (gamePaused || gameOver || gameWon) {
       event.preventDefault();
