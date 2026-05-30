@@ -931,6 +931,17 @@ function main_game_loop() {
         if (enemy.health <= 0) {
           enemy.health = 0;
           enemy.state = BOT_STATE_DEATH;
+
+          //death effect
+          if (!enemy.dying) {
+            enemy.dying = true;
+            enemy.deathTimerMax = 30;
+            enemy.deathTimer = enemy.deathTimerMax;
+            // small death effect for non-explosive bots
+            if (enemy.type !== "explosive_red") {
+              triggerExplosionEffect(enemy.x, enemy.y);
+            }
+          }
           //check for the teleport bot
           if (enemy.displayName) {
             showRoomAlert(enemy.displayName + " was destroyed");
@@ -1022,6 +1033,9 @@ function main_game_loop() {
 
   //It tells the browser window to call main_game_loop again right before the monitor refreshes next.
   //This creates an elegant, highly optimized, non-stop recursive animation loop.
+  // Clean up fully dead enemies (after fade) and mark cleared rooms
+  cleanupDeadEnemies();
+
   // Render the visibility cone overlay so everything outside the cone is black.
   renderVisibilityCone();
   // Redraw player on top so the player is always visible inside the cone
@@ -1029,13 +1043,48 @@ function main_game_loop() {
 
   // draw brief red flash if player was recently hit
   if (playerHitFlashTimer > 0) {
-    var alpha = Math.min(0.9, playerHitFlashTimer / 18 * 0.9);
+    var alpha = Math.min(0.9, (playerHitFlashTimer / 18) * 0.9);
     ctx.save();
     ctx.fillStyle = "rgba(255,0,0," + alpha + ")";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.restore();
   }
   requestAnimationFrame(main_game_loop);
+}
+
+// Remove fully dead enemies after their death timers finish and mark rooms cleared
+function cleanupDeadEnemies() {
+  for (var i = single_global_state_object.enemies.length - 1; i >= 0; i--) {
+    var bot = single_global_state_object.enemies[i];
+
+    if (bot.state === BOT_STATE_DEATH && bot.dying) {
+      bot.deathTimer = (bot.deathTimer || 0) - 1;
+      if (bot.deathTimer <= 0) {
+        var roomIndex = bot.ownedRoomIndex;
+        // remove from array
+        single_global_state_object.enemies.splice(i, 1);
+
+        // check if room is now cleared
+        var stillAlive = false;
+        for (var j = 0; j < single_global_state_object.enemies.length; j++) {
+          var other = single_global_state_object.enemies[j];
+          if (
+            (other.ownedRoomIndex === roomIndex ||
+              other.currentRoomIndex === roomIndex) &&
+            other.state !== BOT_STATE_DEATH
+          ) {
+            stillAlive = true;
+            break;
+          }
+        }
+
+        if (!stillAlive && sectorRooms[roomIndex]) {
+          sectorRooms[roomIndex].cleared = true;
+          showRoomAlert((sectorRooms[roomIndex].name || "Room") + " cleared");
+        }
+      }
+    }
+  }
 }
 
 // Draw player on top of overlays
@@ -1914,7 +1963,12 @@ function drawEnemyUnits() {
   for (var i = 0; i < currentBots.length; i++) {
     var bot = currentBots[i];
 
-    if (bot.state === BOT_STATE_DEATH || bot.isHidden) {
+    if (bot.isHidden) {
+      continue;
+    }
+
+    // Allow a short fade-out rendering for recently killed bots
+    if (bot.state === BOT_STATE_DEATH && !(bot.dying && bot.deathTimer > 0)) {
       continue;
     }
 
@@ -1924,9 +1978,17 @@ function drawEnemyUnits() {
     //bot body
     ctx.arc(bot.x, bot.y, bot.radius + 2, 0, Math.PI * 2);
 
+    var alpha = 1;
+    if (bot.state === BOT_STATE_DEATH && bot.dying && bot.deathTimerMax) {
+      alpha = Math.max(0, bot.deathTimer / bot.deathTimerMax);
+    }
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
     ctx.fillStyle = bot.color || "#FF3333";
     ctx.fill();
     ctx.closePath();
+    ctx.restore();
 
     var barHeight = 4;
     var barWidth = Math.max(24, (bot.maxHealth || 3) * 8);

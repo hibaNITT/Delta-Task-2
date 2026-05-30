@@ -297,6 +297,9 @@ Special bots like roamers and teleporters still keep their custom movement rules
 Step 49: Minimal Hit Flash Implemented
 Added a short red screen flash when the player takes damage from enemy bullets or explosive bot detonations to improve combat feedback at a beginner-polish level.
 
+Step 50: Enemy Death Feedback Implemented
+Enemies now fade out after being killed, spawn a small visual effect, and are removed cleanly from the game state. Rooms are marked cleared and an alert appears when all bots in a room are eliminated.
+
 
 
 
