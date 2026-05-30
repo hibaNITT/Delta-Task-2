@@ -1127,6 +1127,117 @@ function updateHUD() {
   hudScore.textContent = "Score: " + gameScore;
   hudTime.textContent = "Time: " + timerText;
   hudRoomAlert.textContent = roomAlertMessage;
+  // update the left-hand enemy list hud with counts and features
+  updateEnemyLegend();
+}
+
+// enemy info hud panel with types, color swatches, counts and short features
+function updateEnemyLegend() {
+  var legendEl = document.getElementById("enemyInfo");
+  if (!legendEl) return;
+
+  // Known enemy types and default metadata
+  var known = [
+    {
+      key: "normal",
+      name: "Standard Bot",
+      color: "#33ff33",
+      features: "Patrols its room, fires on the player when alerted",
+    },
+    {
+      key: "roamer",
+      name: "Roamer",
+      color: "#002b66",
+      features: "Wanders and can leave its room to chase the player",
+    },
+    {
+      key: "phase_blink",
+      name: "Phase Bot",
+      color: "#7fdcff",
+      features: "Blinks (hidden/visible) on a timer",
+    },
+    {
+      key: "teleport_light_purple",
+      name: "Teleport Bot",
+      color: "#d7a8ff",
+      features: "Teleports between eligible empty rooms",
+    },
+    {
+      key: "explosive_red",
+      name: "Explosive Bot",
+      color: "#ff2b2b",
+      features: "Explodes on death, dealing area damage",
+    },
+    {
+      key: "pink_tank",
+      name: "Pink Tank",
+      color: "#ff7ab8",
+      features: "High health tank; durable but slower",
+    },
+  ];
+
+  // Build counts for all enemy types currently present
+  var counts = {};
+  for (var i = 0; i < single_global_state_object.enemies.length; i++) {
+    var b = single_global_state_object.enemies[i];
+    var t = b.type || "normal";
+    if (!counts[t]) counts[t] = { total: 0, color: b.color || null };
+    // count only non-dead entries
+    if (b.state !== BOT_STATE_DEATH) {
+      counts[t].total += 1;
+    }
+    if (!counts[t].color && b.color) counts[t].color = b.color;
+  }
+
+  // Include zero-count types from known list so the player sees all variants
+  known.forEach(function (k) {
+    if (!counts[k.key]) counts[k.key] = { total: 0, color: k.color };
+    else if (!counts[k.key].color) counts[k.key].color = k.color;
+  });
+
+  // Also include any unknown types discovered at runtime
+  for (var typeKey in counts) {
+    var found = known.some(function (k) {
+      return k.key === typeKey;
+    });
+    if (!found) {
+      known.push({
+        key: typeKey,
+        name: typeKey,
+        color: counts[typeKey].color || "#999",
+        features: "(custom)",
+      });
+    }
+  }
+
+  // Render legend rows
+  var html = "";
+  for (var i = 0; i < known.length; i++) {
+    var meta = known[i];
+    var entry = counts[meta.key] || { total: 0, color: meta.color };
+    var count = entry.total || 0;
+    var swatchColor = entry.color || meta.color || "#888";
+    var dimClass = count === 0 ? "opacity:0.45;" : "";
+
+    html +=
+      '<div class="legendRow" style="' +
+      dimClass +
+      '">\n' +
+      '  <div class="legendSwatch" style="background:' +
+      swatchColor +
+      '"></div>\n' +
+      '  <div class="legendText">' +
+      meta.name +
+      '<div style="font-size:11px;color:#9fcde6">' +
+      meta.features +
+      "</div></div>\n" +
+      '  <div class="legendCount">' +
+      count +
+      "</div>\n" +
+      "</div>\n";
+  }
+
+  legendEl.innerHTML = html;
 }
 
 //reset game state
