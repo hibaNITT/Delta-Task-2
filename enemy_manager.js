@@ -22,6 +22,16 @@ function makeBlinkingLightBlueBot(bot) {
   bot.health = 5;
 }
 
+// Light purple bot that can teleport between special empty rooms.
+function makeLightPurpleTeleportBot(bot) {
+  bot.type = "teleport_light_purple";
+  bot.color = "#d7a8ff";
+  bot.maxHealth = 3;
+  bot.health = 3;
+  bot.teleportCooldownFrames = 180;
+  bot.teleportTimer = bot.teleportCooldownFrames;
+}
+
 function updateBlinkingLightBlueBot(bot) {
   if (bot.type !== "phase_blink") {
     return;
@@ -55,6 +65,9 @@ function makePinkTenHealthBot(bot) {
 function applyEnemyVariantForRoom(bot, roomIndex) {
   var pinkRooms = [1, 7, 12];
   var blinkingLightBlueRooms = [5, 14];
+  var lightPurpleTeleportRooms = [2, 9, 18];
+
+  //making enemy bot function calls
 
   if (pinkRooms.indexOf(roomIndex) !== -1) {
     makePinkTenHealthBot(bot);
@@ -62,6 +75,10 @@ function applyEnemyVariantForRoom(bot, roomIndex) {
 
   if (blinkingLightBlueRooms.indexOf(roomIndex) !== -1) {
     makeBlinkingLightBlueBot(bot);
+  }
+
+  if (lightPurpleTeleportRooms.indexOf(roomIndex) !== -1) {
+    makeLightPurpleTeleportBot(bot);
   }
 }
 

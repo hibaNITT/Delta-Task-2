@@ -291,6 +291,12 @@ var enemyBulletDamage = 1;
 var enemyBulletSpeed = 3;
 var enemyKillScore = 1;
 
+var specialTeleportRoomIndices = [2, 9, 18];
+
+//to check if the player has destroyed a bot to empty a room
+
+var playerHasDestroyedAnyBot = false;
+
 // Construct the 20 rooms dynamically
 for (var row = 0; row < gridRows; row++) {
   for (var col = 0; col < gridColumns; col++) {
@@ -378,6 +384,63 @@ function singleGlobalStateObject(elapsedSeconds, remainingSeconds) {
   single_global_state_object.frame.paused = gamePaused;
   single_global_state_object.frame.over = gameOver;
   single_global_state_object.frame.won = gameWon;
+}
+
+function isSpecialTeleportRoom(roomIndex) {
+  return specialTeleportRoomIndices.indexOf(roomIndex) !== -1;
+}
+
+//to find empty rooms
+function isRoomEmptyAndUnowned(roomIndex, ignoreBot) {
+  for (var i = 0; i < single_global_state_object.enemies.length; i++) {
+    var bot = single_global_state_object.enemies[i];
+
+    if (bot === ignoreBot || bot.state === BOT_STATE_DEATH) {
+      continue;
+    }
+
+    if (
+      bot.currentRoomIndex === roomIndex ||
+      bot.ownedRoomIndex === roomIndex
+    ) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function canPlayerEnterRoom(roomIndex) {
+  if (!isSpecialTeleportRoom(roomIndex)) {
+    return true;
+  }
+
+  if (!playerHasDestroyedAnyBot) {
+    return false;
+  }
+
+  return isRoomEmptyAndUnowned(roomIndex, null);
+}
+
+function blockPlayerFromRoom(pointX, pointY) {
+  if (playerHasDestroyedAnyBot) {
+    return false;
+  }
+
+  for (var i = 0; i < specialTeleportRoomIndices.length; i++) {
+    var roomIndex = specialTeleportRoomIndices[i];
+    var room = sectorRooms[roomIndex];
+
+    if (!room) {
+      continue;
+    }
+
+    if (darkSpacePoint_inRect(pointX, pointY, room)) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 // GAME LOOP - runs 60 times per sec
@@ -477,9 +540,15 @@ function main_game_loop() {
   // Because these are separate if conditions rather than linked if/else statements,
   //if you hold down W and D at the exact same time, the engine will process both blocks and move you diagonally
 
-  //detecting keyboard clicks
   var speed = 3;
   var radius = 10;
+
+  var previousPlayerX = player_position_x;
+  var previousPlayerY = player_position_y;
+  var roomIndexBeforeMove = findPlayerCurrentRoomIndex(
+    previousPlayerX,
+    previousPlayerY,
+  );
 
   var next_x = player_position_x;
   var next_y = player_position_y;
@@ -591,6 +660,21 @@ function main_game_loop() {
       player_position_y - Math.sign(deltaY) * Math.abs(deltaY) * bounceFactor;
   }
 
+  // Block entry to special teleport rooms until a bot is destroyed and the room is empty/unowned.
+  var roomIndexAfterMove = findPlayerCurrentRoomIndex(
+    player_position_x,
+    player_position_y,
+  );
+
+  if (
+    roomIndexAfterMove !== -1 &&
+    roomIndexAfterMove !== roomIndexBeforeMove &&
+    !canPlayerEnterRoom(roomIndexAfterMove)
+  ) {
+    player_position_x = previousPlayerX;
+    player_position_y = previousPlayerY;
+  }
+
   // Wiping the rectangle canvas completely clean
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -672,8 +756,44 @@ function main_game_loop() {
   while (currentBullet !== null) {
     var nextBulletNode = currentBullet.next;
 
+    // Locked special rooms block bullets too, so the player cannot shoot into them
+    // before destroying at least one bot.
+    if (blockPlayerFromRoom(currentBullet.x, currentBullet.y)) {
+      if (currentBullet.prev !== null) {
+        currentBullet.prev.next = currentBullet.next;
+      } else {
+        single_global_state_object.bulletHead = currentBullet.next;
+      }
+
+      if (currentBullet.next !== null) {
+        currentBullet.next.prev = currentBullet.prev;
+      } else {
+        single_global_state_object.bulletTail = currentBullet.prev;
+      }
+
+      currentBullet = nextBulletNode;
+      continue;
+    }
+
     currentBullet.x += currentBullet.vx;
     currentBullet.y += currentBullet.vy;
+
+    if (blockPlayerFromRoom(currentBullet.x, currentBullet.y)) {
+      if (currentBullet.prev !== null) {
+        currentBullet.prev.next = currentBullet.next;
+      } else {
+        single_global_state_object.bulletHead = currentBullet.next;
+      }
+
+      if (currentBullet.next !== null) {
+        currentBullet.next.prev = currentBullet.prev;
+      } else {
+        single_global_state_object.bulletTail = currentBullet.prev;
+      }
+
+      currentBullet = nextBulletNode;
+      continue;
+    }
 
     reflectBulletFromWalls(currentBullet);
 
@@ -698,6 +818,8 @@ function main_game_loop() {
         if (enemy.health <= 0) {
           enemy.health = 0;
           enemy.state = BOT_STATE_DEATH;
+          //check for the teleport bot
+          playerHasDestroyedAnyBot = true;
           gameScore += enemyKillScore;
         }
 
@@ -819,6 +941,7 @@ function resetGame() {
   gameOverSoundPlayed = false;
   gameWonSoundPlayed = false;
   previousRoomIndex = null;
+  playerHasDestroyedAnyBot = false;
 
   keysPressed.w = false;
   keysPressed.a = false;
@@ -1044,6 +1167,7 @@ function spawnEnemiesInRooms() {
       maxHealth: enemyMaxHealth, // Tracking baseline for a future health bar
       state: BOT_STATE_IDLE, // Begins in the idle state machine phase
       currentRoomIndex: i, // Remembers which room number it belongs to
+      ownedRoomIndex: i,
       patrolTargetX: centerX,
       patrolTargetY: centerY,
       waitTimer: 0,
@@ -1106,6 +1230,57 @@ function enemyCanSeePlayer(bot) {
   while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
 
   return Math.abs(angleDiff) <= halfCone;
+}
+
+//creating an array for empty rooms so that we can access for teleporting
+function getEligibleTeleportRooms(bot) {
+  var eligibleRooms = [];
+
+  for (var roomIndex = 0; roomIndex < sectorRooms.length; roomIndex++) {
+    if (roomIndex === bot.currentRoomIndex) {
+      continue;
+    }
+
+    if (isRoomEmptyAndUnowned(roomIndex, bot)) {
+      eligibleRooms.push(roomIndex);
+    }
+  }
+
+  return eligibleRooms;
+}
+
+function tryTeleportLightPurpleBot(bot) {
+  if (bot.type !== "teleport_light_purple") {
+    return;
+  }
+
+  if (typeof bot.teleportTimer !== "number") {
+    bot.teleportTimer = bot.teleportCooldownFrames || 180;
+  }
+
+  if (bot.teleportTimer > 0) {
+    bot.teleportTimer -= 1;
+    return;
+  }
+
+  var availableRooms = getEligibleTeleportRooms(bot);
+
+  if (availableRooms.length > 0) {
+    var pickIndex = Math.floor(Math.random() * availableRooms.length);
+    var nextRoomIndex = availableRooms[pickIndex];
+    var nextRoom = sectorRooms[nextRoomIndex];
+
+    bot.x = nextRoom.x + nextRoom.width / 2;
+    bot.y = nextRoom.y + nextRoom.height / 2;
+    bot.currentRoomIndex = nextRoomIndex;
+    bot.ownedRoomIndex = nextRoomIndex;
+    bot.patrolTargetX = bot.x;
+    bot.patrolTargetY = bot.y;
+    bot.vx = 0;
+    bot.vy = 0;
+  }
+
+  bot.teleportTimer = bot.teleportCooldownFrames || 180;
 }
 
 // SAT helper functions
@@ -1411,12 +1586,26 @@ function updateEnemyUnits() {
       }
     }
 
-    // Skip any bots that are not in the player's active room, except roamers
-    if (bot.type !== "roamer" && bot.currentRoomIndex !== activeRoomIndex) {
+    if (bot.type === "teleport_light_purple") {
+      tryTeleportLightPurpleBot(bot);
+    }
+
+    // Skip any bots that are not in the player's active room,
+    // except roamers and teleport bots.
+    if (
+      bot.type !== "roamer" &&
+      bot.type !== "teleport_light_purple" &&
+      bot.currentRoomIndex !== activeRoomIndex
+    ) {
       continue;
     }
 
-    var room = sectorRooms[bot.currentRoomIndex];
+    var room =
+      sectorRooms[bot.currentRoomIndex] || sectorRooms[bot.ownedRoomIndex];
+
+    if (!room) {
+      continue;
+    }
 
     //calculating distance to player
     var distanceToPlayerX = player_position_x - bot.x;
