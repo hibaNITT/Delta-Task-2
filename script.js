@@ -3,6 +3,7 @@ const canvas = document.getElementById("gameCanvas");
 const hudHealth = document.getElementById("hudHealth");
 const hudScore = document.getElementById("hudScore");
 const hudTime = document.getElementById("hudTime");
+const hudRoomAlert = document.getElementById("hudRoomAlert");
 const pauseToggleButton = document.getElementById("pauseToggleButton");
 const restartButton = document.getElementById("restartButton");
 
@@ -24,6 +25,8 @@ var gameOver = false;
 var gameWon = false;
 var gameOverSoundPlayed = false;
 var gameWonSoundPlayed = false;
+var roomAlertMessage = "";
+var roomAlertTimer = 0;
 
 var previousRoomIndex = null;
 
@@ -422,6 +425,11 @@ function canPlayerEnterRoom(roomIndex) {
   return isRoomEmptyAndUnowned(roomIndex, null);
 }
 
+function showRoomAlert(message) {
+  roomAlertMessage = message;
+  roomAlertTimer = 120;
+}
+
 function blockPlayerFromRoom(pointX, pointY) {
   if (playerHasDestroyedAnyBot) {
     return false;
@@ -445,6 +453,13 @@ function blockPlayerFromRoom(pointX, pointY) {
 
 // GAME LOOP - runs 60 times per sec
 function main_game_loop() {
+  if (roomAlertTimer > 0) {
+    roomAlertTimer -= 1;
+    if (roomAlertTimer === 0) {
+      roomAlertMessage = "";
+    }
+  }
+
   var currentRoomIndex = findPlayerCurrentRoomIndex(
     player_position_x,
     player_position_y,
@@ -819,6 +834,9 @@ function main_game_loop() {
           enemy.health = 0;
           enemy.state = BOT_STATE_DEATH;
           //check for the teleport bot
+          if (enemy.displayName) {
+            showRoomAlert(enemy.displayName + " was destroyed");
+          }
           playerHasDestroyedAnyBot = true;
           gameScore += enemyKillScore;
         }
@@ -927,6 +945,7 @@ function updateHUD() {
     "Health: " + player_health + " / " + player_max_health;
   hudScore.textContent = "Score: " + gameScore;
   hudTime.textContent = "Time: " + timerText;
+  hudRoomAlert.textContent = roomAlertMessage;
 }
 
 //reset game state
@@ -941,6 +960,8 @@ function resetGame() {
   gameOverSoundPlayed = false;
   gameWonSoundPlayed = false;
   previousRoomIndex = null;
+  roomAlertMessage = "";
+  roomAlertTimer = 0;
   playerHasDestroyedAnyBot = false;
 
   keysPressed.w = false;
@@ -1266,9 +1287,23 @@ function tryTeleportLightPurpleBot(bot) {
   var availableRooms = getEligibleTeleportRooms(bot);
 
   if (availableRooms.length > 0) {
+    var fromRoomIndex = bot.currentRoomIndex;
     var pickIndex = Math.floor(Math.random() * availableRooms.length);
     var nextRoomIndex = availableRooms[pickIndex];
     var nextRoom = sectorRooms[nextRoomIndex];
+    var fromRoom = sectorRooms[fromRoomIndex];
+    var botName = bot.displayName || "Bot";
+
+    if (fromRoom && nextRoom) {
+      showRoomAlert(
+        botName +
+          " teleported from " +
+          fromRoom.name +
+          " to " +
+          nextRoom.name +
+          ".",
+      );
+    }
 
     bot.x = nextRoom.x + nextRoom.width / 2;
     bot.y = nextRoom.y + nextRoom.height / 2;

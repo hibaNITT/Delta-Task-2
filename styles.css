@@ -40,6 +40,13 @@ body {
   pointer-events: auto;
 }
 
+#hudRoomAlert {
+  min-height: 20px;
+  margin-top: 6px;
+  color: #d7a8ff;
+  font-weight: bold;
+}
+
 canvas {
   background-color: #051a05;
   border: 2px solid #33ff33;
