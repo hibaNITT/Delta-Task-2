@@ -1,4 +1,3 @@
-// Simple beginner-friendly sound manager.
 // It loads sound files from the sounds/ folder and plays them by name.
 
 var soundManager = {
