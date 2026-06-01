@@ -24,7 +24,7 @@ function handleGunFire(event) {
     window.soundManager.unlock();
   }
 
-  if (gamePaused || gameOver || gameWon) {
+  if (!gameHasStarted || gamePaused || gameOver || gameWon) {
     event.preventDefault();
     return;
   }
@@ -90,6 +90,11 @@ document.addEventListener("keydown", function (event) {
   }
 
   var keyName = event.key.toLowerCase();
+  //if game has nor started it will disable this func
+  if (!gameHasStarted) {
+    event.preventDefault();
+    return;
+  }
 
   if (keyName === "p") {
     event.preventDefault();
@@ -134,9 +139,27 @@ if (window.PointerEvent) {
 
 // Buttons.
 pauseToggleButton.addEventListener("click", function () {
+  if (!gameHasStarted) {
+    return;
+  }
+
   setGamePaused(!gamePaused);
 });
 
 restartButton.addEventListener("click", function () {
+  if (!gameHasStarted) {
+    return;
+  }
+
+  resetGame();
+});
+
+startGameButton.addEventListener("click", function () {
+  if (gameHasStarted) {
+    return;
+  }
+
+  gameHasStarted = true;
+  rulesModal.style.display = "none";
   resetGame();
 });

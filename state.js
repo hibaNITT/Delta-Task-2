@@ -7,6 +7,8 @@ var hudTime = document.getElementById("hudTime");
 var hudRoomAlert = document.getElementById("hudRoomAlert");
 var pauseToggleButton = document.getElementById("pauseToggleButton");
 var restartButton = document.getElementById("restartButton");
+var startGameButton = document.getElementById("startGameButton");
+var rulesModal = document.getElementById("rulesModal");
 
 var ctx = canvas.getContext("2d");
 
@@ -27,6 +29,7 @@ var explosionEffects = [];
 var playerHitFlashTimer = 0;
 var previousRoomIndex = null;
 var playerHasDestroyedAnyBot = false;
+var gameHasStarted = false;
 
 var sectorRooms = [];
 

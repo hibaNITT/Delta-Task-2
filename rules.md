@@ -1,45 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <title>DArk: Echo Sector</title>
-    <link rel="stylesheet" href="styles.css">
-
-</head>
-
-<body>
-
-    <div id="hud" aria-label="Game HUD">
-        <div id="hudHealth">Health : 10 / 10</div>
-        <div id="hudScore">Score: 0</div>
-        <div id="hudTime">Time: 0s</div>
-
-        <!-- aria-live
-Tells screen readers to announce dynamic content changes — content that updates without a page reload. -->
-
-        <!-- 
-aria-label
-Used to give an element a text description when the visible label is missing or insufficient. -->
-
-        <div id="hudRoomAlert" aria-live="polite"></div>
-        <div id="hudShortcuts" aria-label="Keyboard shortcuts"></div>
-        <div id="enemyInfo" aria-label="Enemy info hud"></div>
-        <div id="hudControls">
-            <button id="pauseToggleButton" type="button">Pause</button>
-            <button id="restartButton" type="button">Restart</button>
-        </div>
-    </div>
-
-    <canvas id="gameCanvas" width="800" height="650"></canvas>
-
-    <div id="rulesModal" class="rulesModal" role="dialog" aria-modal="true" aria-labelledby="rulesTitle">
-        <div class="rulesPanel">
-            <h1 id="rulesTitle">DArk: Echo Sector</h1>
-
-            <!-- pre - preformatted text - Displays text exactly as written in the HTML source. -->
-
-            <pre class="rulesText"># DArk: Echo Sector — Game Rules
+# DArk: Echo Sector — Game Rules
 
 Objective:
 
@@ -122,20 +81,3 @@ Custom Bot Variants (from your notes):
 - Notes: Most common; good practice target for beginners.
 
 Have fun! Press Play to start the mission.
-</pre>
-            <button id="startGameButton" type="button">Play</button>
-        </div>
-    </div>
-
-    <script src="constants.js"></script>
-    <script src="other_helpers.js"></script>
-    <script src="state.js"></script>
-    <script src="ui.js"></script>
-    <script src="enemy_manager.js"></script>
-    <script src="sound_manager.js"></script>
-    <script src="game.js"></script>
-    <script src="input.js"></script>
-    <script src="script.js"></script>
-</body>
-
-</html>

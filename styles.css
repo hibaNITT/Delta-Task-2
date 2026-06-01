@@ -11,6 +11,52 @@ body {
   flex-wrap: wrap;
 }
 
+.rulesModal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.82);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 1000;
+}
+
+.rulesPanel {
+  width: min(760px, 100%);
+  max-height: min(86vh, 760px);
+  overflow: auto;
+  background: #08141a;
+  border: 2px solid #00d2ff;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06) inset;
+  color: #e8f7ff;
+  padding: 18px 20px;
+  box-sizing: border-box;
+}
+
+.rulesPanel h1 {
+  margin: 0 0 12px;
+  font: 700 24px monospace;
+  color: #33ff33;
+}
+
+.rulesText {
+  margin: 0;
+  white-space: pre-wrap;
+  font: 14px/1.5 monospace;
+  color: #d8f5ff;
+}
+
+#startGameButton {
+  margin-top: 14px;
+  border: 1px solid #33ff33;
+  background: #12331a;
+  color: #ffffff;
+  padding: 8px 14px;
+  font: 700 14px monospace;
+  cursor: pointer;
+}
+
 #hud {
   z-index: 10;
   pointer-events: none;

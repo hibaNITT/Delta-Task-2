@@ -241,6 +241,13 @@ function resetGame() {
 
 // Main game loop.
 function main_game_loop() {
+  //check
+  if (!gameHasStarted) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    requestAnimationFrame(main_game_loop);
+    return;
+  }
+
   if (roomAlertTimer > 0) {
     roomAlertTimer -= 1;
     if (roomAlertTimer === 0) {
